@@ -5,6 +5,9 @@ name: Pull existing files from FTP (one-time sync)
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   pull-ftp:
     runs-on: ubuntu-latest
