@@ -1,0 +1,45 @@
+name: Pull existing files from FTP (one-time sync)
+
+# 手動実行専用。実行するとFTPサーバー(test/)の中身をこのリポジトリに取り込みます。
+# 大容量バイナリ(画像・GIF・sqlite)とsessions/は対象外です。
+on:
+  workflow_dispatch:
+
+jobs:
+  pull-ftp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install lftp
+        run: sudo apt-get update -y && sudo apt-get install -y lftp
+
+      - name: Mirror from FTP server
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
+        run: |
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_HOST" <<'INNEREOF'
+          set ssl:verify-certificate no
+          mirror --verbose --parallel=3 \
+            --exclude-glob "*.gif" \
+            --exclude-glob "*.png" \
+            --exclude-glob "*.jpg" \
+            --exclude-glob "*.jpeg" \
+            --exclude-glob "*.sqlite" \
+            --exclude "sessions/" \
+            --exclude ".ftp-deploy-sync-state.json" \
+            "$FTP_SERVER_DIR" .
+          bye
+          INNEREOF
+
+      - name: Commit and push pulled files
+        run: |
+          git config user.email "deploy@claude.ai"
+          git config user.name "github-actions"
+          git add -A
+          git diff --cached --quiet || git commit -m "chore: pull existing files from FTP server (one-time sync)"
+          git push
