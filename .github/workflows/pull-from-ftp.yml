@@ -16,6 +16,7 @@ jobs:
         run: sudo apt-get update -y && sudo apt-get install -y lftp
 
       - name: Mirror from FTP server
+        continue-on-error: true
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
@@ -24,7 +25,13 @@ jobs:
         run: |
           lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_HOST" <<'INNEREOF'
           set ssl:verify-certificate no
-          mirror --verbose --parallel=3 \
+          set ftp:passive-mode true
+          set ftp:ssl-allow no
+          set net:timeout 15
+          set net:max-retries 3
+          set net:reconnect-interval-base 5
+          set mirror:parallel-transfer-count 1
+          mirror --verbose=3 --parallel=1 \
             --exclude-glob "*.gif" \
             --exclude-glob "*.png" \
             --exclude-glob "*.jpg" \
@@ -37,6 +44,7 @@ jobs:
           INNEREOF
 
       - name: Commit and push pulled files
+        if: always()
         run: |
           git config user.email "deploy@claude.ai"
           git config user.name "github-actions"
