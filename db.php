@@ -308,10 +308,13 @@ function generateVerifyToken($pdo, $userId) {
 
 // 認証メールを送信する（サーバー標準のmail()関数を利用。追加のSMTP設定は不要）
 function sendVerificationEmail($email, $token) {
-    $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
     $scheme = $isSecure ? 'https://' : 'http://';
     $host = $_SERVER['HTTP_HOST'] ?? 'luxewave.jp';
-    $verifyUrl = $scheme . $host . '/verify_email.php?token=' . urlencode($token);
+
+    // 現在の設置ディレクトリ（例: /test）を自動検出する。本番ルートに移動しても自動で正しいURLになる
+    $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/register.php'), '/');
+    $verifyUrl = $scheme . $host . $basePath . '/verify_email.php?token=' . urlencode($token);
 
     $subject = '【LUXE WAVE】メールアドレスの確認';
     $body = "LUXE WAVEにご登録いただきありがとうございます。\n\n"
