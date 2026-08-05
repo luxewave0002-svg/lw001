@@ -127,15 +127,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </button>
                 </div>
 
-                <label class="flex items-center gap-2 text-xs text-gray-400 select-none cursor-pointer">
-                    <input type="checkbox" id="rememberMe" class="sr-only">
-                    <span class="w-5 h-5 shrink-0 rounded border border-white/30 bg-white/5 flex items-center justify-center transition-colors" id="rememberBox">
-                        <svg id="rememberCheckIcon" class="w-3.5 h-3.5 text-black hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.415l-7.5 7.5a1 1 0 01-1.415 0l-3.5-3.5a1 1 0 111.415-1.414L8.5 12.086l6.79-6.795a1 1 0 011.414 0z" clip-rule="evenodd" />
-                        </svg>
-                    </span>
-                    ログイン情報を保存する
-                </label>
+                <div class="flex flex-col gap-3">
+                    <label class="flex items-center gap-2 text-xs text-gray-400 select-none cursor-pointer">
+                        <input type="checkbox" id="rememberEmail" class="sr-only">
+                        <span class="w-5 h-5 shrink-0 rounded border border-white/30 bg-white/5 flex items-center justify-center transition-colors" id="rememberEmailBox">
+                            <svg id="rememberEmailCheckIcon" class="w-3.5 h-3.5 text-black hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.415l-7.5 7.5a1 1 0 01-1.415 0l-3.5-3.5a1 1 0 111.415-1.414L8.5 12.086l6.79-6.795a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                        メールアドレスを保存する
+                    </label>
+                    <label class="flex items-center gap-2 text-xs text-gray-400 select-none cursor-pointer">
+                        <input type="checkbox" id="rememberPassword" class="sr-only">
+                        <span class="w-5 h-5 shrink-0 rounded border border-white/30 bg-white/5 flex items-center justify-center transition-colors" id="rememberPasswordBox">
+                            <svg id="rememberPasswordCheckIcon" class="w-3.5 h-3.5 text-black hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.415l-7.5 7.5a1 1 0 01-1.415 0l-3.5-3.5a1 1 0 111.415-1.414L8.5 12.086l6.79-6.795a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                        パスワードを保存する
+                    </label>
+                </div>
 
                 <button type="submit" class="mt-4 bg-white/10 hover:bg-white/20 text-white py-2 rounded tracking-widest text-sm transition-all border border-white/30">LOGIN</button>
             </form>
@@ -155,38 +166,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         (function() {
             const emailInput = document.querySelector('input[name="email"]');
             const passwordInput = document.getElementById('password');
-            const rememberCheckbox = document.getElementById('rememberMe');
-            const rememberBox = document.getElementById('rememberBox');
-            const rememberCheckIcon = document.getElementById('rememberCheckIcon');
+            const rememberEmail = document.getElementById('rememberEmail');
+            const rememberEmailBox = document.getElementById('rememberEmailBox');
+            const rememberEmailCheckIcon = document.getElementById('rememberEmailCheckIcon');
+            const rememberPassword = document.getElementById('rememberPassword');
+            const rememberPasswordBox = document.getElementById('rememberPasswordBox');
+            const rememberPasswordCheckIcon = document.getElementById('rememberPasswordCheckIcon');
             const loginForm = document.querySelector('form');
-            if (!emailInput || !passwordInput || !rememberCheckbox || !loginForm) return;
+            if (!emailInput || !passwordInput || !rememberEmail || !rememberPassword || !loginForm) return;
 
-            function syncCheckboxVisual() {
-                if (rememberCheckbox.checked) {
-                    rememberBox.classList.add('bg-white', 'border-white');
-                    rememberCheckIcon.classList.remove('hidden');
+            function syncVisual(checkbox, box, icon) {
+                if (checkbox.checked) {
+                    box.classList.add('bg-white', 'border-white');
+                    icon.classList.remove('hidden');
                 } else {
-                    rememberBox.classList.remove('bg-white', 'border-white');
-                    rememberCheckIcon.classList.add('hidden');
+                    box.classList.remove('bg-white', 'border-white');
+                    icon.classList.add('hidden');
                 }
             }
-            rememberCheckbox.addEventListener('change', syncCheckboxVisual);
+            rememberEmail.addEventListener('change', () => syncVisual(rememberEmail, rememberEmailBox, rememberEmailCheckIcon));
+            rememberPassword.addEventListener('change', () => syncVisual(rememberPassword, rememberPasswordBox, rememberPasswordCheckIcon));
 
             const savedEmail = localStorage.getItem('lw_saved_email');
             const savedPassword = localStorage.getItem('lw_saved_password');
             if (savedEmail !== null) {
                 emailInput.value = savedEmail;
-                passwordInput.value = savedPassword || '';
-                rememberCheckbox.checked = true;
+                rememberEmail.checked = true;
             }
-            syncCheckboxVisual();
+            if (savedPassword !== null) {
+                passwordInput.value = savedPassword;
+                rememberPassword.checked = true;
+            }
+            syncVisual(rememberEmail, rememberEmailBox, rememberEmailCheckIcon);
+            syncVisual(rememberPassword, rememberPasswordBox, rememberPasswordCheckIcon);
 
             loginForm.addEventListener('submit', function() {
-                if (rememberCheckbox.checked) {
+                if (rememberEmail.checked) {
                     localStorage.setItem('lw_saved_email', emailInput.value);
-                    localStorage.setItem('lw_saved_password', passwordInput.value);
                 } else {
                     localStorage.removeItem('lw_saved_email');
+                }
+                if (rememberPassword.checked) {
+                    localStorage.setItem('lw_saved_password', passwordInput.value);
+                } else {
                     localStorage.removeItem('lw_saved_password');
                 }
             });
