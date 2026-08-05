@@ -186,5 +186,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     </script>
+    <script>
+        // --- スリープ・切断対策（ショート・ポーリング） ---
+        function keepAlive() {
+            fetch("keep_alive.php")
+                .then(function(response) { if (!response.ok) console.error("Keep-alive error"); })
+                .catch(function(error) { console.error("通信維持エラー:", error); });
+        }
+        setInterval(keepAlive, 30000);
+    </script>
 </body>
 </html>

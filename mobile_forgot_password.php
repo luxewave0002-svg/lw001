@@ -76,5 +76,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="mt-8 text-center flex flex-col gap-6"><a href="mobile_login.php" class="text-xs text-gray-500 underline underline-offset-4 tracking-widest">ログイン画面に戻る</a></div>
         <?php endif; ?>
     </div>
+    <script>
+        // --- スリープ・切断対策（ショート・ポーリング） ---
+        function keepAlive() {
+            fetch("keep_alive.php")
+                .then(function(response) { if (!response.ok) console.error("Keep-alive error"); })
+                .catch(function(error) { console.error("通信維持エラー:", error); });
+        }
+        setInterval(keepAlive, 30000);
+    </script>
 </body>
 </html>
