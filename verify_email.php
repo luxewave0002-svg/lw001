@@ -3,6 +3,7 @@ require_once 'db.php';
 
 $status = 'error'; // error | success | expired
 $message = '無効な認証リンクです。';
+$justLoggedIn = false;
 
 $token = $_GET['token'] ?? '';
 
@@ -24,8 +25,15 @@ if ($token) {
         $pdo->prepare("UPDATE users SET email_verified = 1, verify_token = NULL, verify_token_expires_at = NULL WHERE id = ?")
             ->execute([$user['id']]);
         writeLog($pdo, $user['id'], 'email_verified', 'メールアドレスの認証が完了しました。');
+
+        // 認証完了と同時にそのままログイン状態にする
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['email'] = $user['email'];
+        writeLog($pdo, $user['id'], 'login', 'メール認証完了に伴う自動ログイン。');
+
         $status = 'success';
-        $message = 'メールアドレスの認証が完了しました。ログインしてご利用いただけます。';
+        $justLoggedIn = true;
+        $message = 'メールアドレスの認証が完了しました。';
     }
 }
 ?>
@@ -50,7 +58,11 @@ if ($token) {
         <?php endif; ?>
         <h2 class="text-xl font-light mb-4 tracking-widest"><?php echo $status === 'success' ? 'VERIFIED' : 'エラー'; ?></h2>
         <p class="text-gray-300 text-sm leading-relaxed mb-8"><?php echo htmlspecialchars($message); ?></p>
-        <a href="login.php" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2 rounded-full tracking-[0.2em] text-xs transition-all duration-300 inline-block">ログイン画面へ</a>
+        <?php if ($justLoggedIn): ?>
+            <a href="<?php echo isMobile() ? 'mobile.php' : 'index.php'; ?>" class="bg-white/10 hover:bg-white/20 text-white px-8 py-2 rounded-full tracking-[0.2em] text-xs transition-all duration-300 inline-block border border-white/30">メインページへ</a>
+        <?php else: ?>
+            <a href="login.php" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2 rounded-full tracking-[0.2em] text-xs transition-all duration-300 inline-block">ログイン画面へ</a>
+        <?php endif; ?>
     </div>
 </body>
 </html>
