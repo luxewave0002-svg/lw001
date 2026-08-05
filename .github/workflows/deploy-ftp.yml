@@ -24,3 +24,10 @@ jobs:
             **/.git*
             **/.git*/**
             **/.github/**
+            sessions/**
+            luxe_wave.sqlite
+            *.jpg
+            *.jpeg
+            *.png
+            *.gif
+            .ftp-deploy-sync-state.json
