@@ -1,0 +1,374 @@
+<?php
+require_once 'db.php';
+
+// ログアウト処理
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header("Location: login.php");
+    exit;
+}
+
+// PC版表示の強制フラグをセッションに保存（PC版を見るボタンを押した時用）
+if (isset($_GET['force_pc'])) {
+    if ($_GET['force_pc'] == '1') {
+        $_SESSION['force_pc'] = true;
+    } elseif ($_GET['force_pc'] == '0') {
+        unset($_SESSION['force_pc']);
+    }
+}
+
+// スマホからのアクセスで、かつ強制PC表示フラグがなければスマホ専用ページへリダイレクト
+// if (empty($_SESSION['force_pc']) && isMobile()) {
+//     header("Location: mobile.php");
+//     exit;
+// }
+
+// HOMEはログイン必須（未ログインならログインページへ）
+requireLogin($pdo, isMobile() && empty($_SESSION['force_pc']) ? 'mobile_login.php' : 'login.php');
+
+require_once 'config.php';
+// ----------------------------------------------------
+$activePage = 'home'; // 初期表示ページ
+$csrfToken = generateCsrfToken();
+$levelPasswordError = '';
+
+// Levelパスワードの照合処理
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verify_level_password') {
+    $token = $_POST['csrf_token'] ?? '';
+    if (!verifyCsrfToken($token)) {
+        die('CSRF token validation failed. 不正なリクエストです。');
+    }
+
+    $verifyLevel = $_POST['level'] ?? '';
+    $inputPassword = $_POST['level_password'] ?? '';
+
+    if (filter_var($verifyLevel, FILTER_VALIDATE_INT, array("options" => array("min_range"=>1, "max_range"=>10)))) {
+        $activePage = 'test' . $verifyLevel;
+
+        if (!isset($_SESSION['user_id'])) {
+            $levelPasswordError = 'ログインが必要です。';
+        } else {
+            $correctPassword = getLevelPassword($pdo, $_SESSION['user_id'], $verifyLevel);
+
+            if ($correctPassword !== null && hash_equals((string)$correctPassword, $inputPassword)) {
+                $_SESSION['unlocked_levels'][(int)$verifyLevel] = levelUnlockFingerprint($correctPassword);
+            } else {
+                $levelPasswordError = 'パスワードが間違っています。';
+            }
+        }
+    }
+}
+
+// ログイン中のユーザーが解除済みのLevel一覧（DBのパスワードと毎回照合）
+$unlockedLevels = [];
+foreach ([1, 2, 3, 4] as $lvl) {
+    $unlockedLevels[$lvl] = isLevelUnlocked($pdo, $_SESSION['user_id'] ?? null, $lvl);
+}
+?>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUXE WAVE</title>
+    <link rel="icon" href="favicon.ico">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300&family=Noto+Sans+JP:wght@200;300&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Chromeの自動入力(鍵)アイコンと目のアイコンが重なって、枠からはみ出て見える現象を防ぐ */
+        input::-webkit-credentials-auto-fill-button,
+        input::-webkit-contacts-auto-fill-button {
+            visibility: hidden;
+            display: none !important;
+            pointer-events: none;
+            position: absolute;
+            right: 0;
+        }
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear {
+            display: none;
+        }
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-weight: 300;
+        }
+        .brand-font {
+            font-family: 'Montserrat', sans-serif;
+        }
+        
+        .page-content {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .page-content.active {
+            display: block;
+            opacity: 1;
+        }
+
+        .toggle-checkbox:checked { right: 0; border-color: #ffffff; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #ffffff; }
+        .toggle-checkbox { right: 0; z-index: 1; border-color: #4b5563; transition: all 0.3s; }
+        .toggle-label { width: 3rem; height: 1.5rem; background-color: #4b5563; border-radius: 9999px; transition: all 0.3s; }
+        .toggle-dot { top: 0.125rem; left: 0.125rem; width: 1.25rem; height: 1.25rem; background-color: #1f2937; border-radius: 50%; transition: all 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .toggle-checkbox:checked ~ .toggle-dot { transform: translateX(1.5rem); background-color: #000000; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-black via-blue-800 to-white bg-fixed text-white min-h-screen overflow-x-hidden antialiased selection:bg-white selection:text-black relative z-0">
+
+    <canvas id="waveCanvas" class="fixed top-0 left-0 w-full h-full z-[-1] pointer-events-none"></canvas>
+
+    <header class="fixed top-0 left-0 w-full z-50 p-4 md:p-6 md:px-12 flex flex-col md:flex-row justify-between items-center bg-gradient-to-b from-black/60 to-transparent">
+        <div class="brand-font text-2xl md:text-2xl tracking-[0.2em] font-light cursor-pointer mb-3 md:mb-0" onclick="showPage('home')">
+            LW
+        </div>
+        <nav class="flex flex-wrap justify-center md:justify-end gap-x-4 gap-y-3 md:gap-x-6 text-[10px] md:text-xs tracking-[0.15em] uppercase text-gray-300">
+            <button onclick="showPage('home')" class="hover:text-white transition-colors duration-300 focus:outline-none">L/W</button>
+            <button onclick="showPage('about')" class="hover:text-white transition-colors duration-300 focus:outline-none">About</button>
+            <button onclick="showPage('info')" class="hover:text-white transition-colors duration-300 focus:outline-none">Info</button>
+            <a href="smart_plugs.php" class="hover:text-white transition-colors duration-300 focus:outline-none">Smart Plugs</a>
+            <?php if(isset($_SESSION['user_id'])): ?>
+            <a href="dashboard.php" class="hover:text-white transition-colors duration-300 focus:outline-none">Dashboard</a>
+            <a href="?logout=1" class="hover:text-white transition-colors duration-300 focus:outline-none">Logout</a>
+            <?php else: ?>
+            <a href="login.php" class="hover:text-white transition-colors duration-300 focus:outline-none">Login</a>
+            <?php endif; ?>
+        </nav>
+    </header>
+
+    <main class="min-h-screen flex flex-col items-center justify-start pt-24 md:pt-32 pb-24 px-4 md:px-6 relative z-10">
+
+        <section id="page-home" class="page-content text-center w-full max-w-4xl">
+            <div class="flex flex-col items-center w-full">
+                <h1 class="brand-font text-lg md:text-3xl lg:text-4xl font-extralight tracking-[0.25em] uppercase text-white drop-shadow-2xl opacity-90 pl-[0.25em] mb-12 md:mb-16">
+                    Luxe Wave
+                </h1>
+
+                <div class="flex flex-wrap justify-center gap-4 w-full px-2 md:px-4">
+                    <?php foreach([1, 2, 3, 4] as $i): ?>
+                    <button onclick="showPage('test<?php echo $i; ?>')" class="w-28 sm:w-32 bg-white/5 hover:bg-white/10 border border-white/20 backdrop-blur-sm text-gray-200 hover:text-white py-4 rounded-md transition-all duration-300 tracking-widest font-light text-sm shadow-lg hover:shadow-white/10 hover:-translate-y-1">Level.<?php echo $i; ?></button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-about" class="page-content w-full max-w-2xl bg-black/30 backdrop-blur-xl p-8 md:p-12 rounded-lg border border-white/20 shadow-2xl">
+            <h2 class="text-2xl md:text-3xl font-light mb-6 border-b border-white/30 pb-4 tracking-wider text-white">About</h2>
+            <p class="text-gray-200 leading-relaxed font-light tracking-wider">
+                coming soon...
+            </p>
+            <div class="mt-10 text-center">
+                <button onclick="showPage('home')" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 focus:outline-none">BACK TO HOME</button>
+            </div>
+        </section>
+
+        <section id="page-info" class="page-content w-full max-w-2xl bg-black/30 backdrop-blur-xl p-8 md:p-12 rounded-lg border border-white/20 shadow-2xl">
+            <h2 class="text-2xl md:text-3xl font-light mb-8 border-b border-white/30 pb-4 tracking-wider text-white">Info</h2>
+
+            <div class="flex flex-col gap-4">
+                <a href="https://note.com/luxewave" target="_blank" rel="noopener noreferrer"
+                   class="group flex items-center justify-between bg-white/5 hover:bg-white/10 border border-white/20 hover:border-white/40 rounded-lg px-6 py-5 transition-all duration-300">
+                    <span class="tracking-[0.2em] text-sm text-gray-200 group-hover:text-white">note</span>
+                    <span class="flex items-center gap-2 text-[10px] tracking-widest text-gray-500 group-hover:text-gray-300">
+                        note.com/luxewave
+                        <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                        </svg>
+                    </span>
+                </a>
+
+                <div class="flex items-center justify-between bg-black/20 border border-white/10 rounded-lg px-6 py-5">
+                    <span class="tracking-[0.2em] text-sm text-gray-300">SNS</span>
+                    <span class="text-[10px] tracking-widest text-gray-400">coming soon...</span>
+                </div>
+
+                <div class="flex items-center justify-between bg-black/20 border border-white/10 rounded-lg px-6 py-5">
+                    <span class="tracking-[0.2em] text-sm text-gray-300">独自資料</span>
+                    <span class="text-[10px] tracking-widest text-gray-400">coming soon...</span>
+                </div>
+            </div>
+
+            <div class="mt-10 text-center">
+                <button onclick="showPage('home')" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 focus:outline-none">BACK TO HOME</button>
+            </div>
+        </section>
+
+        <?php foreach([1, 2, 3, 4] as $i): ?>
+            <?php
+                $imagePath = getImagePath((string)$i);
+                $isLocked = empty($unlockedLevels[$i]);
+            ?>
+
+            <section id="page-test<?php echo $i; ?>" class="page-content w-full max-w-2xl bg-black/30 backdrop-blur-xl p-8 md:p-12 rounded-lg border border-white/20 shadow-2xl text-left">
+                <h2 class="text-2xl md:text-3xl font-light mb-8 border-b border-white/30 pb-4 tracking-wider text-white">Level.<?php echo $i; ?></h2>
+
+                <?php if ($isLocked): ?>
+                    <?php if (!isset($_SESSION['user_id'])): ?>
+                        <p class="text-gray-300 text-sm mb-6">このLevelを見るにはログインが必要です。</p>
+                        <div class="text-center">
+                            <a href="login.php" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 inline-block">LOGIN</a>
+                        </div>
+                    <?php else: ?>
+                        <?php if ($levelPasswordError && $activePage === 'test' . $i): ?>
+                            <p class="text-red-400 text-xs mb-4"><?php echo htmlspecialchars($levelPasswordError); ?></p>
+                        <?php endif; ?>
+                        <form method="POST" class="flex flex-col gap-4 max-w-xs mx-auto">
+                            <input type="hidden" name="action" value="verify_level_password">
+                            <input type="hidden" name="level" value="<?php echo $i; ?>">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                            <div class="relative">
+                                <input type="password" name="level_password" placeholder="Password" required class="bg-black/50 border border-white/20 rounded pl-3 pr-12 py-2 text-sm text-white w-full focus:outline-none focus:border-white/50">
+                                <button type="button" onclick="toggleLevelPassword(this)" aria-label="パスワードを表示" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-white transition-colors focus:outline-none">
+                                    <svg class="eye-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                    </svg>
+                                    <svg class="eye-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <button type="submit" class="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded transition-colors tracking-widest font-light">UNLOCK</button>
+                        </form>
+                        <div class="mt-10 text-center">
+                            <button onclick="showPage('home')" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 focus:outline-none">BACK TO HOME</button>
+                        </div>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <div class="flex items-center mb-8 inline-block">
+                        <span class="mr-6 font-light text-gray-200 tracking-wider">技術発生</span>
+                        <div class="relative inline-block w-12 h-6 align-middle select-none">
+                            <input type="checkbox" name="toggleTest<?php echo $i; ?>" id="toggleTest<?php echo $i; ?>" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-transparent border-2 appearance-none cursor-pointer outline-none" onchange="toggleImage('test<?php echo $i; ?>-media', 'status-test<?php echo $i; ?>', this.checked)"/>
+                            <label for="toggleTest<?php echo $i; ?>" class="toggle-label block overflow-hidden h-6 rounded-full cursor-pointer border border-white/30"></label>
+                            <div class="toggle-dot absolute block w-5 h-5 rounded-full shadow inset-y-0 left-0 mt-0.5 ml-0.5 pointer-events-none"></div>
+                        </div>
+                        <span id="status-test<?php echo $i; ?>" class="ml-6 font-semibold tracking-widest text-gray-400 text-sm">OFF</span>
+                    </div>
+
+                    <div id="test<?php echo $i; ?>-media" class="hidden transition-all duration-500 opacity-0">
+                        <div class="overflow-hidden rounded shadow-2xl bg-black flex justify-center items-center py-8">
+                            <?php if (isVideoFile($imagePath)): ?>
+                                <video src="<?php echo htmlspecialchars($imagePath); ?>" controls class="w-full max-w-sm h-auto opacity-90 hover:opacity-100 transition-opacity duration-500"></video>
+                            <?php else: ?>
+                                <img src="<?php echo htmlspecialchars($imagePath); ?>" alt="Test<?php echo $i; ?> メディア" class="w-full max-w-sm h-auto object-contain opacity-90 hover:opacity-100 transition-opacity duration-500">
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="mt-10 text-center">
+                        <button onclick="showPage('home')" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 focus:outline-none">BACK TO HOME</button>
+                    </div>
+                <?php endif; ?>
+            </section>
+        <?php endforeach; ?>
+
+    </main>
+
+    <div class="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+        <a href="admin.php" class="text-[10px] text-white/50 hover:text-white transition-colors tracking-widest uppercase bg-black/30 px-2 py-1 rounded-md backdrop-blur-sm border border-white/10">Admin</a>
+        <?php if (isMobile()): ?>
+        <a href="index.php?force_pc=0" class="text-[10px] text-white/50 hover:text-white transition-colors tracking-widest uppercase bg-black/30 px-2 py-1 rounded-md backdrop-blur-sm border border-white/10">スマホ版に戻る</a>
+        <?php endif; ?>
+    </div>
+
+    <script>
+        // Levelパスワードの表示／非表示切り替え（各Levelのフォームで共通利用）
+        function toggleLevelPassword(button) {
+            const input = button.parentElement.querySelector('input');
+            const willShow = input.type === 'password';
+            input.type = willShow ? 'text' : 'password';
+            button.querySelector('.eye-open').classList.toggle('hidden', willShow);
+            button.querySelector('.eye-closed').classList.toggle('hidden', !willShow);
+            button.setAttribute('aria-label', willShow ? 'パスワードを隠す' : 'パスワードを表示');
+        }
+
+        // --- スリープ・切断対策（ショート・ポーリング） ---
+function keepAlive() {
+    fetch('keep_alive.php')
+        .then(response => {
+            if (!response.ok) {
+                console.error('Keep-alive error');
+            }
+        })
+        .catch(error => {
+            console.error('通信維持エラー:', error);
+        });
+}
+// 30秒（30000ミリ秒）ごとに裏側でサーバーをノックする
+setInterval(keepAlive, 30000);
+// ----------------------------------------------------
+        // --- 背景の周波数波（キャンバスアニメーション） ---
+        const canvas = document.getElementById('waveCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, time = 0;
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function drawWaves() {
+            ctx.clearRect(0, 0, width, height);
+            const waves = [
+                { amplitude: 150, frequency: 0.002, speed: 0.015, color: 'rgba(255, 255, 255, 0.05)' },
+                { amplitude: 100, frequency: 0.004, speed: 0.02,  color: 'rgba(100, 150, 255, 0.15)' },
+                { amplitude: 60,  frequency: 0.006, speed: 0.03,  color: 'rgba(255, 255, 255, 0.03)' }
+            ];
+            waves.forEach(wave => {
+                ctx.beginPath();
+                ctx.strokeStyle = wave.color;
+                ctx.lineWidth = 1;
+                for (let x = 0; x <= width; x += 4) {
+                    const envelope = Math.sin(x * 0.001 + time * 0.01) * 0.8 + 0.2;
+                    const y = height / 2 + Math.sin(x * wave.frequency + time * wave.speed) * wave.amplitude * envelope;
+                    if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            });
+            time += 1;
+            requestAnimationFrame(drawWaves);
+        }
+        drawWaves();
+
+        // ページ切り替え関数
+        function showPage(pageId) {
+            const pages = document.querySelectorAll('.page-content');
+            pages.forEach(page => page.classList.remove('active'));
+            setTimeout(() => {
+                const targetPage = document.getElementById('page-' + pageId);
+                if (targetPage) {
+                    targetPage.classList.add('active');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }, 50);
+        }
+
+        // ON/OFF切り替え関数
+        function toggleImage(elementId, statusId, isChecked) {
+            const targetElement = document.getElementById(elementId);
+            const statusElement = document.getElementById(statusId);
+            if (isChecked) {
+                targetElement.classList.remove('hidden');
+                setTimeout(() => { targetElement.classList.add('opacity-100'); }, 10);
+                statusElement.textContent = 'ON';
+                statusElement.classList.replace('text-gray-400', 'text-white');
+            } else {
+                targetElement.classList.remove('opacity-100');
+                setTimeout(() => { targetElement.classList.add('hidden'); }, 300);
+                statusElement.textContent = 'OFF';
+                statusElement.classList.replace('text-white', 'text-gray-400');
+            }
+        }
+
+        // ページ読み込み時の処理 (PHPからの変数を受け取る)
+        window.addEventListener('DOMContentLoaded', () => {
+            showPage('<?php echo $activePage; ?>');
+        });
+    </script>
+</body>
+</html>
