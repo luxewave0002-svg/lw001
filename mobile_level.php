@@ -100,6 +100,15 @@ $imagePath = getImagePath((string)$level);
                             </svg>
                         </button>
                     </div>
+                    <label class="flex items-center gap-2 text-xs text-gray-400 select-none cursor-pointer">
+                        <input type="checkbox" id="rememberLevelPassword" class="sr-only">
+                        <span class="w-5 h-5 shrink-0 rounded border border-white/30 bg-white/5 flex items-center justify-center transition-colors" id="rememberLevelPasswordBox">
+                            <svg id="rememberLevelPasswordCheckIcon" class="w-3.5 h-3.5 text-black hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.415l-7.5 7.5a1 1 0 01-1.415 0l-3.5-3.5a1 1 0 111.415-1.414L8.5 12.086l6.79-6.795a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                        パスワードを保存する
+                    </label>
                     <button type="submit" class="bg-white/10 hover:bg-white/20 border border-white/30 text-white py-3 rounded-full tracking-widest text-sm transition-all">UNLOCK</button>
                 </form>
             <?php endif; ?>
@@ -129,6 +138,44 @@ $imagePath = getImagePath((string)$level);
     </div>
 
     <script>
+        // Levelパスワードの保存・自動入力（Level番号ごとにlocalStorageへ保存。サーバーには送信しません）
+        (function() {
+            const level = <?php echo (int)$level; ?>;
+            const storageKey = 'lw_level_password_' + level;
+            const passwordInput = document.querySelector('input[name="level_password"]');
+            const rememberCheckbox = document.getElementById('rememberLevelPassword');
+            const rememberBox = document.getElementById('rememberLevelPasswordBox');
+            const rememberCheckIcon = document.getElementById('rememberLevelPasswordCheckIcon');
+            const levelForm = document.querySelector('form');
+            if (!passwordInput || !rememberCheckbox || !levelForm) return;
+
+            function syncVisual() {
+                if (rememberCheckbox.checked) {
+                    rememberBox.classList.add('bg-white', 'border-white');
+                    rememberCheckIcon.classList.remove('hidden');
+                } else {
+                    rememberBox.classList.remove('bg-white', 'border-white');
+                    rememberCheckIcon.classList.add('hidden');
+                }
+            }
+            rememberCheckbox.addEventListener('change', syncVisual);
+
+            const savedPassword = localStorage.getItem(storageKey);
+            if (savedPassword !== null) {
+                passwordInput.value = savedPassword;
+                rememberCheckbox.checked = true;
+            }
+            syncVisual();
+
+            levelForm.addEventListener('submit', function() {
+                if (rememberCheckbox.checked) {
+                    localStorage.setItem(storageKey, passwordInput.value);
+                } else {
+                    localStorage.removeItem(storageKey);
+                }
+            });
+        })();
+
         // Levelパスワードの表示／非表示切り替え
         function toggleLevelPassword(button) {
             const input = button.parentElement.querySelector('input');
