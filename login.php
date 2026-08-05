@@ -128,7 +128,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <label class="flex items-center gap-2 text-xs text-gray-400 select-none cursor-pointer">
-                    <input type="checkbox" id="rememberMe" class="w-4 h-4 accent-white/70 bg-white/5 border border-white/20 rounded">
+                    <input type="checkbox" id="rememberMe" class="peer sr-only">
+                    <span class="w-5 h-5 shrink-0 rounded border border-white/30 bg-white/5 flex items-center justify-center peer-checked:bg-white peer-checked:border-white transition-colors">
+                        <svg class="w-3.5 h-3.5 text-black hidden peer-checked:block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.415l-7.5 7.5a1 1 0 01-1.415 0l-3.5-3.5a1 1 0 111.415-1.414L8.5 12.086l6.79-6.795a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                    </span>
                     ログイン情報を保存する
                 </label>
 
