@@ -126,7 +126,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </svg>
                     </button>
                 </div>
-                
+
+                <label class="flex items-center gap-2 text-xs text-gray-400 select-none cursor-pointer">
+                    <input type="checkbox" id="rememberMe" class="w-4 h-4 accent-white/70 bg-white/5 border border-white/20 rounded">
+                    ログイン情報を保存する
+                </label>
+
                 <button type="submit" class="mt-4 bg-white/10 hover:bg-white/20 text-white py-2 rounded tracking-widest text-sm transition-all border border-white/30">LOGIN</button>
             </form>
             <div class="mt-6 text-center flex flex-col gap-3">
@@ -141,6 +146,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
+        // ログイン情報の保存・自動入力（ブラウザのlocalStorageにのみ保存。サーバーには送信しません）
+        (function() {
+            const emailInput = document.querySelector('input[name="email"]');
+            const passwordInput = document.getElementById('password');
+            const rememberCheckbox = document.getElementById('rememberMe');
+            const loginForm = document.querySelector('form');
+            if (!emailInput || !passwordInput || !rememberCheckbox || !loginForm) return;
+
+            const savedEmail = localStorage.getItem('lw_saved_email');
+            const savedPassword = localStorage.getItem('lw_saved_password');
+            if (savedEmail !== null) {
+                emailInput.value = savedEmail;
+                passwordInput.value = savedPassword || '';
+                rememberCheckbox.checked = true;
+            }
+
+            loginForm.addEventListener('submit', function() {
+                if (rememberCheckbox.checked) {
+                    localStorage.setItem('lw_saved_email', emailInput.value);
+                    localStorage.setItem('lw_saved_password', passwordInput.value);
+                } else {
+                    localStorage.removeItem('lw_saved_email');
+                    localStorage.removeItem('lw_saved_password');
+                }
+            });
+        })();
+
         function togglePasswordVisibility(inputId, iconId) {
             const input = document.getElementById(inputId);
             const icon = document.getElementById(iconId);
