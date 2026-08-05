@@ -96,6 +96,28 @@ try {
         )
     ");
 
+    // メール認証用カラムがなければ追加する（既存ユーザーは既定で「未認証」扱いにはしない＝認証済み扱いにして影響を出さない）
+    $stmt = $pdo->query("PRAGMA table_info(users)");
+    $userColumns = $stmt->fetchAll();
+    $hasEmailVerified = false;
+    $hasVerifyToken = false;
+    $hasVerifyTokenExpires = false;
+    foreach ($userColumns as $col) {
+        if ($col['name'] === 'email_verified') $hasEmailVerified = true;
+        if ($col['name'] === 'verify_token') $hasVerifyToken = true;
+        if ($col['name'] === 'verify_token_expires_at') $hasVerifyTokenExpires = true;
+    }
+    if (!$hasEmailVerified) {
+        // 既存ユーザーは移行前から使えていたアカウントなので、影響が出ないよう既定値は「認証済み(1)」にする
+        $pdo->exec("ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1");
+    }
+    if (!$hasVerifyToken) {
+        $pdo->exec("ALTER TABLE users ADD COLUMN verify_token TEXT");
+    }
+    if (!$hasVerifyTokenExpires) {
+        $pdo->exec("ALTER TABLE users ADD COLUMN verify_token_expires_at DATETIME");
+    }
+
     // デバイステーブルの作成（ユーザーと紐付けます）
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS devices (
@@ -273,6 +295,36 @@ function requireLogin($pdo, $redirectTo = 'login.php') {
         header("Location: $redirectTo");
         exit;
     }
+}
+
+// メール認証トークンを生成し、DBに保存する（有効期限24時間）
+function generateVerifyToken($pdo, $userId) {
+    $token = bin2hex(random_bytes(32));
+    $expiresAt = date('Y-m-d H:i:s', time() + 86400);
+    $stmt = $pdo->prepare("UPDATE users SET verify_token = ?, verify_token_expires_at = ? WHERE id = ?");
+    $stmt->execute([$token, $expiresAt, $userId]);
+    return $token;
+}
+
+// 認証メールを送信する（サーバー標準のmail()関数を利用。追加のSMTP設定は不要）
+function sendVerificationEmail($email, $token) {
+    $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    $scheme = $isSecure ? 'https://' : 'http://';
+    $host = $_SERVER['HTTP_HOST'] ?? 'luxewave.jp';
+    $verifyUrl = $scheme . $host . '/verify_email.php?token=' . urlencode($token);
+
+    $subject = '【LUXE WAVE】メールアドレスの確認';
+    $body = "LUXE WAVEにご登録いただきありがとうございます。\n\n"
+          . "以下のリンクをクリックして、メールアドレスの確認を完了してください。\n"
+          . "（このリンクの有効期限は24時間です）\n\n"
+          . $verifyUrl . "\n\n"
+          . "心当たりがない場合は、このメールを破棄してください。\n\n"
+          . "LUXE WAVE";
+
+    $headers = "From: LUXE WAVE <admin@luxewave.jp>\r\n";
+    $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+
+    return @mail($email, mb_encode_mimeheader($subject, 'UTF-8'), $body, $headers);
 }
 
 // Levelパスワード（アクセスコード）生成関数

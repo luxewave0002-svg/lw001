@@ -39,10 +39,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['email'] = $user['email'];
-            writeLog($pdo, $user['id'], 'login', 'ユーザーがログインしました。');
-            $login_success = true;
+            if ((int)$user['email_verified'] !== 1) {
+                $error = 'メールアドレスの確認が完了していません。ご登録時に届いたメール内のリンクをクリックしてください。';
+            } else {
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['email'] = $user['email'];
+                writeLog($pdo, $user['id'], 'login', 'ユーザーがログインしました。');
+                $login_success = true;
+            }
         } else {
             $error = 'メールアドレスまたはパスワードが間違っています。';
         }

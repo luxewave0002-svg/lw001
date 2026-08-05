@@ -27,7 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $pdo->beginTransaction();
 
-                $stmt = $pdo->prepare("INSERT INTO users (email, password) VALUES (?, ?)");
+                // 新規登録は未認証(email_verified=0)状態で作成する
+                $stmt = $pdo->prepare("INSERT INTO users (email, password, email_verified) VALUES (?, ?, 0)");
                 $stmt->execute([$email, $hash]);
                 $newUserId = $pdo->lastInsertId();
 
@@ -41,9 +42,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $pdo->commit();
 
-                // 登録後、自動でログイン状態にしてダッシュボードへ
-                $_SESSION['user_id'] = $newUserId;
-                $_SESSION['email'] = $email;
+                // メール認証用のトークンを発行し、確認メールを送信する
+                $verifyToken = generateVerifyToken($pdo, $newUserId);
+                sendVerificationEmail($email, $verifyToken);
+
+                // 認証が完了するまでは自動ログインさせない
                 $register_success = true;
             } catch (PDOException $e) {
                 $pdo->rollBack();
@@ -108,9 +111,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if($register_success): ?>
             <div class="flex flex-col items-center justify-center py-4">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 text-green-400 mb-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
                 </svg>
-                <p class="text-green-400 text-sm text-center tracking-widest">アカウントを作成しました</p>
+                <p class="text-green-400 text-sm text-center tracking-widest">確認メールを送信しました</p>
+                <p class="text-gray-400 text-xs text-center mt-4 leading-relaxed">
+                    ご登録のメールアドレスに確認メールをお送りしました。<br>
+                    メール内のリンクをクリックして、登録を完了してください。<br>
+                    （リンクの有効期限は24時間です）
+                </p>
+                <a href="login.php" class="mt-8 border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2 rounded-full tracking-[0.2em] text-xs transition-all duration-300 inline-block">ログイン画面へ</a>
             </div>
         <?php else: ?>
             <?php if($error): ?>
@@ -160,16 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        <?php if ($register_success): ?>
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                document.body.classList.add('animate-fade-out');
-                setTimeout(() => {
-                    window.location.href = '<?php echo isMobile() ? 'mobile.php' : 'index.php'; ?>';
-                }, 800);
-            }, 800);
-        });
-        <?php endif; ?>
+        <?php // 認証完了まで自動ログインしないため、自動リダイレクトは行わない ?>
 
         const canvas = document.getElementById('waveCanvas');
         const ctx = canvas.getContext('2d');
