@@ -602,6 +602,28 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
                                     </svg>
                                 </button>
                             </div>
+
+                            <div class="flex flex-col gap-3">
+                                <label class="flex items-center gap-2 text-xs text-gray-400 select-none cursor-pointer">
+                                    <input type="checkbox" id="rememberAdminEmail" class="sr-only">
+                                    <span class="w-5 h-5 shrink-0 rounded border border-white/30 bg-white/5 flex items-center justify-center transition-colors" id="rememberAdminEmailBox">
+                                        <svg id="rememberAdminEmailCheckIcon" class="w-3.5 h-3.5 text-black hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.415l-7.5 7.5a1 1 0 01-1.415 0l-3.5-3.5a1 1 0 111.415-1.414L8.5 12.086l6.79-6.795a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                    </span>
+                                    メールアドレスを保存する
+                                </label>
+                                <label class="flex items-center gap-2 text-xs text-gray-400 select-none cursor-pointer">
+                                    <input type="checkbox" id="rememberAdminPassword" class="sr-only">
+                                    <span class="w-5 h-5 shrink-0 rounded border border-white/30 bg-white/5 flex items-center justify-center transition-colors" id="rememberAdminPasswordBox">
+                                        <svg id="rememberAdminPasswordCheckIcon" class="w-3.5 h-3.5 text-black hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.415l-7.5 7.5a1 1 0 01-1.415 0l-3.5-3.5a1 1 0 111.415-1.414L8.5 12.086l6.79-6.795a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                    </span>
+                                    パスワードを保存する
+                                </label>
+                            </div>
+
                             <button type="submit" class="mt-4 bg-white/10 hover:bg-white/20 text-white py-2 rounded tracking-widest text-sm transition-all border border-white/30">LOGIN</button>
                         </form>
                         <div class="mt-6 text-center">
@@ -1009,6 +1031,58 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
     </div>
 
     <script>
+        // Adminログイン情報の保存・自動入力（ブラウザのlocalStorageにのみ保存。サーバーには送信しません）
+        (function() {
+            const emailInput = document.querySelector('input[name="admin_email"]');
+            const passwordInput = document.getElementById('admin_password');
+            const rememberEmail = document.getElementById('rememberAdminEmail');
+            const rememberEmailBox = document.getElementById('rememberAdminEmailBox');
+            const rememberEmailCheckIcon = document.getElementById('rememberAdminEmailCheckIcon');
+            const rememberPassword = document.getElementById('rememberAdminPassword');
+            const rememberPasswordBox = document.getElementById('rememberAdminPasswordBox');
+            const rememberPasswordCheckIcon = document.getElementById('rememberAdminPasswordCheckIcon');
+            const loginForm = emailInput ? emailInput.closest('form') : null;
+            if (!emailInput || !passwordInput || !rememberEmail || !rememberPassword || !loginForm) return;
+
+            function syncVisual(checkbox, box, icon) {
+                if (checkbox.checked) {
+                    box.classList.add('bg-white', 'border-white');
+                    icon.classList.remove('hidden');
+                } else {
+                    box.classList.remove('bg-white', 'border-white');
+                    icon.classList.add('hidden');
+                }
+            }
+            rememberEmail.addEventListener('change', () => syncVisual(rememberEmail, rememberEmailBox, rememberEmailCheckIcon));
+            rememberPassword.addEventListener('change', () => syncVisual(rememberPassword, rememberPasswordBox, rememberPasswordCheckIcon));
+
+            const savedEmail = localStorage.getItem('lw_saved_admin_email');
+            const savedPassword = localStorage.getItem('lw_saved_admin_password');
+            if (savedEmail !== null) {
+                emailInput.value = savedEmail;
+                rememberEmail.checked = true;
+            }
+            if (savedPassword !== null) {
+                passwordInput.value = savedPassword;
+                rememberPassword.checked = true;
+            }
+            syncVisual(rememberEmail, rememberEmailBox, rememberEmailCheckIcon);
+            syncVisual(rememberPassword, rememberPasswordBox, rememberPasswordCheckIcon);
+
+            loginForm.addEventListener('submit', function() {
+                if (rememberEmail.checked) {
+                    localStorage.setItem('lw_saved_admin_email', emailInput.value);
+                } else {
+                    localStorage.removeItem('lw_saved_admin_email');
+                }
+                if (rememberPassword.checked) {
+                    localStorage.setItem('lw_saved_admin_password', passwordInput.value);
+                } else {
+                    localStorage.removeItem('lw_saved_admin_password');
+                }
+            });
+        })();
+
         function togglePasswordVisibility(inputId, iconId) {
             const input = document.getElementById(inputId);
             const icon = document.getElementById(iconId);
