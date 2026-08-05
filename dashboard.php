@@ -491,7 +491,7 @@ if (!empty($devices)) {
         </div>
 
         <!-- 個人のプラグ一覧 -->
-        <h2 class="text-xl mb-4 tracking-wider">Your Devices</h2>
+        <h2 class="text-xl mb-4 tracking-wider">Your Devices <span class="text-xs text-gray-500 tracking-normal">（スマートプラグ契約者のみ）</span></h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
             <?php foreach ($devices as $device): ?>
                 <div id="device_card_<?php echo $device['id']; ?>" class="bg-black/30 border border-white/10 p-5 sm:p-6 rounded-xl backdrop-blur-sm relative transition-colors duration-500">
@@ -609,7 +609,7 @@ if (!empty($devices)) {
         </div>
 
         <!-- デバイス追加フォーム -->
-        <h2 class="text-xl mb-4 tracking-wider">Add New Device</h2>
+        <h2 class="text-xl mb-4 tracking-wider">Add New Device <span class="text-xs text-gray-500 tracking-normal">（スマートプラグ契約者のみ）</span></h2>
         <div class="bg-black/30 border border-white/10 p-6 rounded-xl backdrop-blur-sm flex flex-col gap-4">
             
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg gap-3 sm:gap-0 my-1">
