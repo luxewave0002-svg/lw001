@@ -26,7 +26,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verif
         $correctPassword = getLevelPassword($pdo, $_SESSION['user_id'], $level);
 
         if ($correctPassword !== null && hash_equals((string)$correctPassword, $inputPassword)) {
-            $_SESSION['unlocked_levels'][$level] = levelUnlockFingerprint($correctPassword);
+            $fingerprint = levelUnlockFingerprint($correctPassword);
+            $_SESSION['unlocked_levels'][$level] = $fingerprint;
+            setcookie('level_unlock_' . $level, $fingerprint, [
+                'expires' => time() + 31536000,
+                'path' => '/',
+                'secure' => $isSecure,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
         } else {
             $levelPasswordError = 'パスワードが間違っています。';
         }

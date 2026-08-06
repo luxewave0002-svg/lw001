@@ -272,8 +272,61 @@ try {
             $insertInvite->execute([generateInviteCode(), $u['id'], date('Y-m-d H:i:s')]);
         }
     }
+    // 永続ログイン用トークンテーブル（ブラウザを閉じても・バックグラウンドでセッションが切れても自動再ログインするため）
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS remember_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            selector TEXT UNIQUE NOT NULL,
+            token_hash TEXT NOT NULL,
+            created_at DATETIME NOT NULL,
+            expires_at DATETIME NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ");
 } catch (PDOException $e) {
     die("DB Connection failed: " . $e->getMessage());
+}
+
+// 永続ログイン（Remember Me）: セッションが切れていてもCookieが有効なら自動的に再ログインする
+if (!isset($_SESSION['user_id']) && !empty($_COOKIE['lw_remember'])) {
+    $parts = explode(':', $_COOKIE['lw_remember'], 2);
+    if (count($parts) === 2) {
+        [$selector, $validator] = $parts;
+        $stmt = $pdo->prepare("SELECT rt.id, rt.user_id, rt.token_hash, rt.expires_at, u.email FROM remember_tokens rt JOIN users u ON u.id = rt.user_id WHERE rt.selector = ?");
+        $stmt->execute([$selector]);
+        $rememberRow = $stmt->fetch();
+
+        if ($rememberRow && strtotime($rememberRow['expires_at']) > time() && hash_equals($rememberRow['token_hash'], hash('sha256', $validator))) {
+            $_SESSION['user_id'] = $rememberRow['user_id'];
+            $_SESSION['email'] = $rememberRow['email'];
+            // 使用済みトークンはローテーション（盗用対策として毎回新しい値に差し替える）
+            $pdo->prepare("DELETE FROM remember_tokens WHERE id = ?")->execute([$rememberRow['id']]);
+            issueRememberCookie($pdo, $rememberRow['user_id']);
+        } else {
+            // 無効・期限切れのCookieは破棄する
+            setcookie('lw_remember', '', time() - 3600, '/', '', $isSecure, true);
+        }
+    }
+}
+
+// 永続ログイン用Cookieを発行する（1年間有効。バックグラウンドでセッションが切れても自動再ログインするために使う）
+function issueRememberCookie($pdo, $userId) {
+    global $isSecure;
+    $selector = bin2hex(random_bytes(12));
+    $validator = bin2hex(random_bytes(32));
+    $expiresAt = date('Y-m-d H:i:s', time() + 31536000); // 1年
+
+    $pdo->prepare("INSERT INTO remember_tokens (user_id, selector, token_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?)")
+        ->execute([$userId, $selector, hash('sha256', $validator), date('Y-m-d H:i:s'), $expiresAt]);
+
+    setcookie('lw_remember', $selector . ':' . $validator, [
+        'expires' => time() + 31536000,
+        'path' => '/',
+        'secure' => $isSecure,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
 }
 
 // ログ記録用ヘルパー関数
@@ -295,6 +348,28 @@ function requireLogin($pdo, $redirectTo = 'login.php') {
         header("Location: $redirectTo");
         exit;
     }
+}
+
+// ログアウト処理（セッションに加えて、永続ログイン用Cookie・DBトークンも確実に破棄する）
+function logoutUser($pdo) {
+    global $isSecure;
+
+    if (!empty($_COOKIE['lw_remember'])) {
+        $parts = explode(':', $_COOKIE['lw_remember'], 2);
+        if (count($parts) === 2) {
+            $pdo->prepare("DELETE FROM remember_tokens WHERE selector = ?")->execute([$parts[0]]);
+        }
+    }
+    setcookie('lw_remember', '', time() - 3600, '/', '', $isSecure, true);
+
+    // 解除済みLevelのCookieも破棄する
+    foreach ($_COOKIE as $cookieName => $cookieValue) {
+        if (strpos($cookieName, 'level_unlock_') === 0) {
+            setcookie($cookieName, '', time() - 3600, '/', '', $isSecure, true);
+        }
+    }
+
+    session_destroy();
 }
 
 // メール認証トークンを生成し、DBに保存する（有効期限24時間）
@@ -354,7 +429,9 @@ function getLevelPassword($pdo, $userId, $level) {
 
 // そのユーザーがLevelを閲覧できるかを判定する関数
 // 解除状態は毎回DBのパスワードと照合するため、管理画面で削除・再発行されると自動的に再ロックされる
+// セッションが切れていても、Cookie（level_unlock_N）が有効なら解除状態を維持する
 function isLevelUnlocked($pdo, $userId, $level) {
+    global $isSecure;
     $level = (int)$level;
 
     // 発行記録（削除済みを含む）が1件も無いLevelは、これまで通りロックしない
@@ -368,17 +445,28 @@ function isLevelUnlocked($pdo, $userId, $level) {
     $currentPassword = getLevelPassword($pdo, $userId, $level);
     if ($currentPassword === null) {
         unset($_SESSION['unlocked_levels'][$level]);
+        setcookie('level_unlock_' . $level, '', time() - 3600, '/', '', $isSecure, true);
         return false;
     }
 
-    // 再発行でパスワードが変わった場合も、以前の解除状態は無効にする
-    $fingerprint = $_SESSION['unlocked_levels'][$level] ?? '';
-    if (!is_string($fingerprint) || !hash_equals(levelUnlockFingerprint($currentPassword), $fingerprint)) {
-        unset($_SESSION['unlocked_levels'][$level]);
-        return false;
+    $expectedFingerprint = levelUnlockFingerprint($currentPassword);
+    $cookieName = 'level_unlock_' . $level;
+
+    // セッションに解除記録があればそれを優先
+    $sessionFingerprint = $_SESSION['unlocked_levels'][$level] ?? '';
+    if (is_string($sessionFingerprint) && $sessionFingerprint !== '' && hash_equals($expectedFingerprint, $sessionFingerprint)) {
+        return true;
     }
 
-    return true;
+    // セッションが切れていても、Cookieが一致すれば解除状態とみなし、セッションにも復元する
+    $cookieFingerprint = $_COOKIE[$cookieName] ?? '';
+    if (is_string($cookieFingerprint) && $cookieFingerprint !== '' && hash_equals($expectedFingerprint, $cookieFingerprint)) {
+        $_SESSION['unlocked_levels'][$level] = $expectedFingerprint;
+        return true;
+    }
+
+    unset($_SESSION['unlocked_levels'][$level]);
+    return false;
 }
 
 // 招待コード生成関数

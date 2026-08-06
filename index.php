@@ -3,7 +3,7 @@ require_once 'db.php';
 
 // ログアウト処理
 if (isset($_GET['logout'])) {
-    session_destroy();
+    logoutUser($pdo);
     header("Location: login.php");
     exit;
 }
@@ -51,7 +51,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verif
             $correctPassword = getLevelPassword($pdo, $_SESSION['user_id'], $verifyLevel);
 
             if ($correctPassword !== null && hash_equals((string)$correctPassword, $inputPassword)) {
-                $_SESSION['unlocked_levels'][(int)$verifyLevel] = levelUnlockFingerprint($correctPassword);
+                $fingerprint = levelUnlockFingerprint($correctPassword);
+                $_SESSION['unlocked_levels'][(int)$verifyLevel] = $fingerprint;
+                setcookie('level_unlock_' . (int)$verifyLevel, $fingerprint, [
+                    'expires' => time() + 31536000,
+                    'path' => '/',
+                    'secure' => $isSecure,
+                    'httponly' => true,
+                    'samesite' => 'Lax',
+                ]);
             } else {
                 $levelPasswordError = 'パスワードが間違っています。';
             }

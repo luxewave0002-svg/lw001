@@ -3,7 +3,7 @@ require_once 'db.php';
 
 // ログアウト処理
 if (isset($_GET['logout'])) {
-    session_destroy();
+    logoutUser($pdo);
     header("Location: mobile_login.php");
     exit;
 }

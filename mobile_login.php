@@ -30,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['email'] = $user['email'];
+                issueRememberCookie($pdo, $user['id']);
                 writeLog($pdo, $user['id'], 'login', 'ユーザーがログインしました (Mobile)。');
                 $login_success = true;
             }

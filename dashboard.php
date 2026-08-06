@@ -41,7 +41,7 @@ $myLevelPasswords = $myLevelPwStmt->fetchAll();
 
 // ログアウト処理
 if (isset($_GET['logout'])) {
-    session_destroy();
+    logoutUser($pdo);
     header("Location: login.php");
     exit;
 }
@@ -262,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
                 $pdo->commit();
 
-                session_destroy();
+                logoutUser($pdo);
                 header("Location: login.php?deleted=true");
                 exit;
             } catch (Exception $e) {
