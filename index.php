@@ -263,6 +263,7 @@ foreach ([1, 2, 3, 4] as $lvl) {
                             <div class="toggle-dot absolute block w-5 h-5 rounded-full shadow inset-y-0 left-0 mt-0.5 ml-0.5 pointer-events-none"></div>
                         </div>
                         <span id="status-test<?php echo $i; ?>" class="ml-6 font-semibold tracking-widest text-gray-400 text-sm">OFF</span>
+                        <span id="on-timer<?php echo $i; ?>" class="hidden ml-3 text-xs text-gray-400 tracking-wider tabular-nums">(00:00:00)</span>
                     </div>
 
                     <div id="test<?php echo $i; ?>-media" class="hidden transition-all duration-500 opacity-0">
@@ -407,18 +408,76 @@ setInterval(keepAlive, 30000);
         function toggleImage(elementId, statusId, isChecked) {
             const targetElement = document.getElementById(elementId);
             const statusElement = document.getElementById(statusId);
+            const level = statusId.replace('status-test', '');
             if (isChecked) {
                 targetElement.classList.remove('hidden');
                 setTimeout(() => { targetElement.classList.add('opacity-100'); }, 10);
                 statusElement.textContent = 'ON';
                 statusElement.classList.replace('text-gray-400', 'text-white');
+                startOnTimer(level);
             } else {
                 targetElement.classList.remove('opacity-100');
                 setTimeout(() => { targetElement.classList.add('hidden'); }, 300);
                 statusElement.textContent = 'OFF';
                 statusElement.classList.replace('text-white', 'text-gray-400');
+                stopOnTimer(level);
             }
         }
+
+        // 「技術発生」ONになってからの経過時間タイマー（Level番号ごとにlocalStorageへ保存。ページを開き直しても継続表示）
+        (function() {
+            const onTimerIntervals = {};
+
+            function formatElapsed(ms) {
+                const totalSeconds = Math.floor(ms / 1000);
+                const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+                const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+                const s = String(totalSeconds % 60).padStart(2, '0');
+                return h + ':' + m + ':' + s;
+            }
+
+            function tick(level) {
+                const storageKey = 'lw_level_on_since_' + level;
+                const onTimerEl = document.getElementById('on-timer' + level);
+                const since = parseInt(localStorage.getItem(storageKey) || '0', 10);
+                if (!since || !onTimerEl) return;
+                onTimerEl.textContent = '(' + formatElapsed(Date.now() - since) + ')';
+            }
+
+            window.startOnTimer = function(level) {
+                const storageKey = 'lw_level_on_since_' + level;
+                const onTimerEl = document.getElementById('on-timer' + level);
+                if (!onTimerEl) return;
+                if (!localStorage.getItem(storageKey)) {
+                    localStorage.setItem(storageKey, String(Date.now()));
+                }
+                onTimerEl.classList.remove('hidden');
+                tick(level);
+                if (onTimerIntervals[level]) clearInterval(onTimerIntervals[level]);
+                onTimerIntervals[level] = setInterval(() => tick(level), 1000);
+            };
+
+            window.stopOnTimer = function(level) {
+                const storageKey = 'lw_level_on_since_' + level;
+                const onTimerEl = document.getElementById('on-timer' + level);
+                localStorage.removeItem(storageKey);
+                if (onTimerEl) onTimerEl.classList.add('hidden');
+                if (onTimerIntervals[level]) clearInterval(onTimerIntervals[level]);
+                onTimerIntervals[level] = null;
+            };
+
+            // ページを開き直した時、ON状態が保存されていればトグルとタイマーを復元する
+            document.addEventListener('DOMContentLoaded', function() {
+                [1, 2, 3, 4].forEach(function(level) {
+                    const storageKey = 'lw_level_on_since_' + level;
+                    const checkbox = document.getElementById('toggleTest' + level);
+                    if (localStorage.getItem(storageKey) && checkbox) {
+                        checkbox.checked = true;
+                        toggleImage('test' + level + '-media', 'status-test' + level, true);
+                    }
+                });
+            });
+        })();
 
         // ページ読み込み時の処理 (PHPからの変数を受け取る)
         window.addEventListener('DOMContentLoaded', () => {

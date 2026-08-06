@@ -129,6 +129,7 @@ $imagePath = getImagePath((string)$level);
                     <div class="toggle-dot absolute block w-5 h-5 rounded-full shadow inset-y-0 left-0 mt-0.5 ml-0.5 pointer-events-none"></div>
                 </div>
                 <span id="status-level" class="font-semibold tracking-widest text-gray-400 text-sm">OFF</span>
+                <span id="on-timer" class="hidden text-xs text-gray-400 tracking-wider tabular-nums">(00:00:00)</span>
             </div>
 
             <div id="level-media" class="hidden transition-all duration-500 opacity-0 mb-8">
@@ -202,13 +203,61 @@ $imagePath = getImagePath((string)$level);
                 setTimeout(() => { targetElement.classList.add('opacity-100'); }, 10);
                 statusElement.textContent = 'ON';
                 statusElement.classList.replace('text-gray-400', 'text-white');
+                startOnTimer();
             } else {
                 targetElement.classList.remove('opacity-100');
                 setTimeout(() => { targetElement.classList.add('hidden'); }, 300);
                 statusElement.textContent = 'OFF';
                 statusElement.classList.replace('text-white', 'text-gray-400');
+                stopOnTimer();
             }
         }
+
+        // 「技術発生」ONになってからの経過時間タイマー（Level番号ごとにlocalStorageへ保存。ページを開き直しても継続表示）
+        (function() {
+            const level = <?php echo (int)$level; ?>;
+            const timerStorageKey = 'lw_level_on_since_' + level;
+            const onTimerEl = document.getElementById('on-timer');
+            const toggleCheckbox = document.getElementById('toggleLevel');
+            let timerInterval = null;
+
+            function formatElapsed(ms) {
+                const totalSeconds = Math.floor(ms / 1000);
+                const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+                const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+                const s = String(totalSeconds % 60).padStart(2, '0');
+                return h + ':' + m + ':' + s;
+            }
+
+            function tick() {
+                const since = parseInt(localStorage.getItem(timerStorageKey) || '0', 10);
+                if (!since) return;
+                onTimerEl.textContent = '(' + formatElapsed(Date.now() - since) + ')';
+            }
+
+            window.startOnTimer = function() {
+                if (!localStorage.getItem(timerStorageKey)) {
+                    localStorage.setItem(timerStorageKey, String(Date.now()));
+                }
+                onTimerEl.classList.remove('hidden');
+                tick();
+                if (timerInterval) clearInterval(timerInterval);
+                timerInterval = setInterval(tick, 1000);
+            };
+
+            window.stopOnTimer = function() {
+                localStorage.removeItem(timerStorageKey);
+                onTimerEl.classList.add('hidden');
+                if (timerInterval) clearInterval(timerInterval);
+                timerInterval = null;
+            };
+
+            // ページを開き直した時、ON状態が保存されていればトグルとタイマーを復元する
+            if (localStorage.getItem(timerStorageKey) && toggleCheckbox) {
+                toggleCheckbox.checked = true;
+                toggleImage('level-media', 'status-level', true);
+            }
+        })();
 
         const canvas = document.getElementById('waveCanvas');
         const ctx = canvas.getContext('2d');
