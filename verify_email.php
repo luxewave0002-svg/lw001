@@ -29,6 +29,7 @@ if ($token) {
         // 認証完了と同時にそのままログイン状態にする
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['email'] = $user['email'];
+        registerNewLoginDevice($pdo, $user['id']);
         issueRememberCookie($pdo, $user['id']);
         writeLog($pdo, $user['id'], 'login', 'メール認証完了に伴う自動ログイン。');
 

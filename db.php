@@ -118,6 +118,15 @@ try {
         $pdo->exec("ALTER TABLE users ADD COLUMN verify_token_expires_at DATETIME");
     }
 
+    // 単一端末ログイン制御用カラム（新しい端末でログインするたびに数値を増やし、古い端末を強制ログアウトさせる）
+    $hasSessionVersion = false;
+    foreach ($userColumns as $col) {
+        if ($col['name'] === 'session_version') $hasSessionVersion = true;
+    }
+    if (!$hasSessionVersion) {
+        $pdo->exec("ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0");
+    }
+
     // デバイステーブルの作成（ユーザーと紐付けます）
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS devices (
@@ -300,6 +309,10 @@ if (!isset($_SESSION['user_id']) && !empty($_COOKIE['lw_remember'])) {
         if ($rememberRow && strtotime($rememberRow['expires_at']) > time() && hash_equals($rememberRow['token_hash'], hash('sha256', $validator))) {
             $_SESSION['user_id'] = $rememberRow['user_id'];
             $_SESSION['email'] = $rememberRow['email'];
+            // 単一端末ログイン制御：現在の世代番号をそのまま引き継ぐ（他端末をキックするわけではない）
+            $verStmt = $pdo->prepare("SELECT session_version FROM users WHERE id = ?");
+            $verStmt->execute([$rememberRow['user_id']]);
+            $_SESSION['session_version'] = (int)$verStmt->fetchColumn();
             // 使用済みトークンはローテーション（盗用対策として毎回新しい値に差し替える）
             $pdo->prepare("DELETE FROM remember_tokens WHERE id = ?")->execute([$rememberRow['id']]);
             issueRememberCookie($pdo, $rememberRow['user_id']);
@@ -309,6 +322,9 @@ if (!isset($_SESSION['user_id']) && !empty($_COOKIE['lw_remember'])) {
         }
     }
 }
+
+// 他の端末で新しくログインされていないか、毎回のアクセスで確認する（単一端末ログイン制御）
+enforceSingleDeviceLogin($pdo);
 
 // 永続ログイン用Cookieを発行する（1年間有効。バックグラウンドでセッションが切れても自動再ログインするために使う）
 function issueRememberCookie($pdo, $userId) {
@@ -370,6 +386,32 @@ function logoutUser($pdo) {
     }
 
     session_destroy();
+}
+
+// 新しい端末でのログインを「最新」として記録し、他の端末を次回アクセス時に強制ログアウトさせる
+function registerNewLoginDevice($pdo, $userId) {
+    $stmt = $pdo->prepare("UPDATE users SET session_version = session_version + 1 WHERE id = ?");
+    $stmt->execute([$userId]);
+
+    $newVersion = (int)$pdo->query("SELECT session_version FROM users WHERE id = " . (int)$userId)->fetchColumn();
+    $_SESSION['session_version'] = $newVersion;
+
+    // 他端末の永続ログインCookie（remember_tokens）は全て無効化する。今回発行する分だけ残す
+    $pdo->prepare("DELETE FROM remember_tokens WHERE user_id = ?")->execute([$userId]);
+}
+
+// 現在のセッションが最新端末のものか確認する。他端末で新しくログインされていれば強制ログアウトする
+function enforceSingleDeviceLogin($pdo) {
+    if (!isset($_SESSION['user_id'])) {
+        return;
+    }
+    $stmt = $pdo->prepare("SELECT session_version FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $currentVersion = $stmt->fetchColumn();
+
+    if ($currentVersion === false || (int)($_SESSION['session_version'] ?? -1) !== (int)$currentVersion) {
+        logoutUser($pdo);
+    }
 }
 
 // メール認証トークンを生成し、DBに保存する（有効期限24時間）
