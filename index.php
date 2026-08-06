@@ -140,7 +140,7 @@ foreach ([1, 2, 3, 4] as $lvl) {
             <a href="smart_plugs.php" class="hover:text-white transition-colors duration-300 focus:outline-none">Smart Plugs</a>
             <?php if(isset($_SESSION['user_id'])): ?>
             <a href="dashboard.php" class="hover:text-white transition-colors duration-300 focus:outline-none">Dashboard</a>
-            <a href="?logout=1" class="hover:text-white transition-colors duration-300 focus:outline-none">Logout</a>
+            <a href="?logout=1" onclick="[1,2,3,4].forEach(function(l){localStorage.removeItem('lw_level_on_since_'+l);})" class="hover:text-white transition-colors duration-300 focus:outline-none">Logout</a>
             <?php else: ?>
             <a href="login.php" class="hover:text-white transition-colors duration-300 focus:outline-none">Login</a>
             <?php endif; ?>

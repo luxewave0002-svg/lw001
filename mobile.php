@@ -47,7 +47,7 @@ requireLogin($pdo, 'mobile_login.php');
 
             <?php if(isset($_SESSION['user_id'])): ?>
                 <a href="dashboard.php" class="bg-white/10 hover:bg-white/20 border border-white/30 text-white py-3.5 rounded-full tracking-widest text-sm transition-all shadow-lg">DASHBOARD</a>
-                <a href="?logout=1" class="text-xs text-gray-500 underline underline-offset-4 tracking-widest mt-1 inline-block">LOGOUT</a>
+                <a href="?logout=1" onclick="[1,2,3,4].forEach(function(l){localStorage.removeItem('lw_level_on_since_'+l);})" class="text-xs text-gray-500 underline underline-offset-4 tracking-widest mt-1 inline-block">LOGOUT</a>
             <?php else: ?>
                 <a href="mobile_login.php" class="bg-white/10 hover:bg-white/20 border border-white/30 text-white py-3.5 rounded-full tracking-widest text-sm transition-all shadow-lg">LOGIN</a>
             <?php endif; ?>
