@@ -89,7 +89,7 @@ if (isset($_GET['logout'])) {
                 })
                 .catch(function(error) { console.error("通信維持エラー:", error); });
         }
-        setInterval(keepAlive, 30000);
+        setInterval(keepAlive, 5000);
     </script>
 </body>
 </html>

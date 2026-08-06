@@ -361,7 +361,7 @@ function keepAlive() {
         });
 }
 // 30秒（30000ミリ秒）ごとに裏側でサーバーをノックする
-setInterval(keepAlive, 30000);
+setInterval(keepAlive, 5000);
 // ----------------------------------------------------
         // --- 背景の周波数波（キャンバスアニメーション） ---
         const canvas = document.getElementById('waveCanvas');
