@@ -347,6 +347,13 @@ function keepAlive() {
         .then(response => {
             if (!response.ok) {
                 console.error('Keep-alive error');
+                return;
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.loggedIn === false) {
+                window.location.href = 'login.php';
             }
         })
         .catch(error => {

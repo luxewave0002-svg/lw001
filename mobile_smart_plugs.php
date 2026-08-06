@@ -220,7 +220,15 @@ $userDevices = $stmt->fetchAll();
         // --- スリープ・切断対策（ショート・ポーリング） ---
         function keepAlive() {
             fetch("keep_alive.php")
-                .then(function(response) { if (!response.ok) console.error("Keep-alive error"); })
+                .then(function(response) {
+                    if (!response.ok) { console.error("Keep-alive error"); return; }
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (data && data.loggedIn === false) {
+                        window.location.href = "mobile_login.php";
+                    }
+                })
                 .catch(function(error) { console.error("通信維持エラー:", error); });
         }
         setInterval(keepAlive, 30000);
