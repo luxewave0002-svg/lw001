@@ -105,5 +105,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             waves.forEach(wave => { ctx.beginPath(); ctx.strokeStyle = wave.color; ctx.lineWidth = 1; for (let x = 0; x <= width; x += 4) { const envelope = Math.sin(x * 0.001 + time * 0.01) * 0.8 + 0.2; const y = height / 2 + Math.sin(x * wave.frequency + time * wave.speed) * wave.amplitude * envelope; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke(); }); time += 1; requestAnimationFrame(drawWaves);
         } drawWaves();
     </script>
+    <!-- バックグラウンド・画面ロック延命用サイレント音声（隠し要素。muted指定はしない＝無音の中身を再生することで背景オーディオ扱いにする） -->
+    <audio id="lw-bg-keepalive" src="bg-keepalive.m4a" loop playsinline preload="auto" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;"></audio>
+    <script>
+        (function() {
+            var a = document.getElementById('lw-bg-keepalive');
+            if (!a) return;
+            a.volume = 1.0;
+            function tryPlay() { a.play().catch(function() {}); }
+            tryPlay();
+            document.addEventListener('click', tryPlay, { once: true });
+            document.addEventListener('touchstart', tryPlay, { once: true });
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible') tryPlay();
+            });
+        })();
+    </script>
 </body>
 </html>

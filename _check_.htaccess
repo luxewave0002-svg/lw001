@@ -1,0 +1,36 @@
+# http → https リダイレクト
+# 2026-08-04 時点では、サーバ側（お名前.com の常時SSL設定）で http→https の301リダイレクトが
+# 既に有効なため、ここでは指定しない（二重リダイレクトを避けるためコメントのままにしておく）。
+# サーバ側の常時SSLを解除する場合のみ、下の3行のコメント(#)を外して有効化すること。
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+#    RewriteCond %{HTTPS} !=on
+#    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+#    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=302,L]
+</IfModule>
+
+# データベースファイルへの直接アクセスをブロック
+<Files "luxe_wave.sqlite">
+    Require all denied
+</Files>
+
+# PHPのアップロード上限を200MBに引き上げ
+php_value upload_max_filesize 200M
+php_value post_max_size 210M
+php_value memory_limit 256M
+php_value max_execution_time 600
+php_value max_input_time 600
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # 画像ファイル（1ヶ月）
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+
+    # CSSとJavaScriptファイル（1週間）
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType text/javascript "access plus 1 week"
+</IfModule>
