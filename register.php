@@ -102,6 +102,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body class="bg-gradient-to-br from-black via-blue-900 to-black min-h-screen flex items-center justify-center text-white relative z-0 overflow-hidden">
+<!-- インアプリブラウザ（LINE/Facebook/Instagram等）検知バナー -->
+<div id="lw-inapp-banner" class="hidden fixed top-0 left-0 right-0 z-[9999] bg-black/95 border-b border-white/20 text-white text-xs sm:text-sm px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-2 backdrop-blur-md">
+    <span class="tracking-wide leading-relaxed">アプリ内ブラウザで表示しています。正しく動作しない場合は右上「…」等のメニューから「ブラウザで開く」を選択してください。</span>
+    <div class="flex items-center gap-2 shrink-0">
+        <button type="button" onclick="lwCopyCurrentUrl(this)" class="border border-white/30 hover:bg-white/10 px-3 py-1 rounded-full tracking-wider text-xs transition-colors">URLをコピー</button>
+        <button type="button" onclick="document.getElementById('lw-inapp-banner').style.display='none'" class="text-gray-400 hover:text-white px-2 text-lg leading-none">&times;</button>
+    </div>
+</div>
+<script>
+    (function() {
+        var ua = navigator.userAgent || '';
+        var isInApp = /FBAN|FBAV|Instagram|Line\//i.test(ua) || (/; wv\)/i.test(ua) && /Version\//i.test(ua));
+        if (isInApp) {
+            var banner = document.getElementById('lw-inapp-banner');
+            if (banner) banner.classList.remove('hidden');
+        }
+    })();
+    function lwCopyCurrentUrl(btn) {
+        navigator.clipboard.writeText(window.location.href).then(function() {
+            var original = btn.textContent;
+            btn.textContent = 'コピーしました';
+            setTimeout(function() { btn.textContent = original; }, 1500);
+        }).catch(function() {});
+    }
+</script>
+
 
     <canvas id="waveCanvas" class="fixed top-0 left-0 w-full h-full z-[-1] pointer-events-none"></canvas>
 
