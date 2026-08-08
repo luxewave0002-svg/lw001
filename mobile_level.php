@@ -152,7 +152,7 @@ $imagePath = getImagePath((string)$level);
             <div class="flex items-center justify-center mb-8 gap-4">
                 <span class="font-light text-gray-200 tracking-wider text-sm">技術発生</span>
                 <div class="relative inline-block w-12 h-6 align-middle select-none">
-                    <input type="checkbox" name="toggleLevel" id="toggleLevel" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-transparent border-2 appearance-none cursor-pointer outline-none" onchange="toggleImage('level-media', 'status-level', this.checked)"/>
+                    <input type="checkbox" name="toggleLevel" id="toggleLevel" autocomplete="off" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-transparent border-2 appearance-none cursor-pointer outline-none" onchange="toggleImage('level-media', 'status-level', this.checked)"/>
                     <label for="toggleLevel" class="toggle-label block overflow-hidden h-6 rounded-full cursor-pointer border border-white/30"></label>
                     <div class="toggle-dot absolute block w-5 h-5 rounded-full shadow inset-y-0 left-0 mt-0.5 ml-0.5 pointer-events-none"></div>
                 </div>
@@ -281,9 +281,13 @@ $imagePath = getImagePath((string)$level);
             };
 
             // ページを開き直した時、ON状態が保存されていればトグルとタイマーを復元する（同一タブ内でのみ）
+            // 保存が無ければ、ブラウザ側の自動復元によるズレを防ぐため明示的にOFFへ揃える
             if (sessionStorage.getItem(timerStorageKey) && toggleCheckbox) {
                 toggleCheckbox.checked = true;
                 toggleImage('level-media', 'status-level', true);
+            } else if (toggleCheckbox) {
+                toggleCheckbox.checked = false;
+                toggleImage('level-media', 'status-level', false);
             }
         })();
 

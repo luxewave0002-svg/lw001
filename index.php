@@ -286,7 +286,7 @@ foreach ([1, 2, 3, 4] as $lvl) {
                     <div class="flex items-center mb-8 inline-block">
                         <span class="mr-6 font-light text-gray-200 tracking-wider">技術発生</span>
                         <div class="relative inline-block w-12 h-6 align-middle select-none">
-                            <input type="checkbox" name="toggleTest<?php echo $i; ?>" id="toggleTest<?php echo $i; ?>" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-transparent border-2 appearance-none cursor-pointer outline-none" onchange="toggleImage('test<?php echo $i; ?>-media', 'status-test<?php echo $i; ?>', this.checked)"/>
+                            <input type="checkbox" name="toggleTest<?php echo $i; ?>" id="toggleTest<?php echo $i; ?>" autocomplete="off" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-transparent border-2 appearance-none cursor-pointer outline-none" onchange="toggleImage('test<?php echo $i; ?>-media', 'status-test<?php echo $i; ?>', this.checked)"/>
                             <label for="toggleTest<?php echo $i; ?>" class="toggle-label block overflow-hidden h-6 rounded-full cursor-pointer border border-white/30"></label>
                             <div class="toggle-dot absolute block w-5 h-5 rounded-full shadow inset-y-0 left-0 mt-0.5 ml-0.5 pointer-events-none"></div>
                         </div>
@@ -502,13 +502,18 @@ setInterval(keepAlive, 5000);
             };
 
             // ページを開き直した時、ON状態が保存されていればトグルとタイマーを復元する（同一タブ内でのみ）
+            // 保存が無ければ、ブラウザ側の自動復元によるズレを防ぐため明示的にOFFへ揃える
             document.addEventListener('DOMContentLoaded', function() {
                 [1, 2, 3, 4].forEach(function(level) {
                     const storageKey = 'lw_level_on_since_' + level;
                     const checkbox = document.getElementById('toggleTest' + level);
-                    if (sessionStorage.getItem(storageKey) && checkbox) {
+                    if (!checkbox) return;
+                    if (sessionStorage.getItem(storageKey)) {
                         checkbox.checked = true;
                         toggleImage('test' + level + '-media', 'status-test' + level, true);
+                    } else {
+                        checkbox.checked = false;
+                        toggleImage('test' + level + '-media', 'status-test' + level, false);
                     }
                 });
             });
