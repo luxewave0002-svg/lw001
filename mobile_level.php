@@ -239,7 +239,7 @@ $imagePath = getImagePath((string)$level);
             }
         }
 
-        // 「技術発生」ONになってからの経過時間タイマー（Level番号ごとにlocalStorageへ保存。ページを開き直しても継続表示）
+        // 「技術発生」ONになってからの経過時間タイマー（Level番号ごとにsessionStorageへ保存。タブ内の再読込では継続、ブラウザを完全終了すると自動リセット）
         (function() {
             const level = <?php echo (int)$level; ?>;
             const timerStorageKey = 'lw_level_on_since_' + level;
@@ -256,14 +256,14 @@ $imagePath = getImagePath((string)$level);
             }
 
             function tick() {
-                const since = parseInt(localStorage.getItem(timerStorageKey) || '0', 10);
+                const since = parseInt(sessionStorage.getItem(timerStorageKey) || '0', 10);
                 if (!since) return;
                 onTimerEl.textContent = '(' + formatElapsed(Date.now() - since) + ')';
             }
 
             window.startOnTimer = function() {
-                if (!localStorage.getItem(timerStorageKey)) {
-                    localStorage.setItem(timerStorageKey, String(Date.now()));
+                if (!sessionStorage.getItem(timerStorageKey)) {
+                    sessionStorage.setItem(timerStorageKey, String(Date.now()));
                 }
                 onTimerEl.classList.remove('hidden');
                 tick();
@@ -272,14 +272,14 @@ $imagePath = getImagePath((string)$level);
             };
 
             window.stopOnTimer = function() {
-                localStorage.removeItem(timerStorageKey);
+                sessionStorage.removeItem(timerStorageKey);
                 onTimerEl.classList.add('hidden');
                 if (timerInterval) clearInterval(timerInterval);
                 timerInterval = null;
             };
 
-            // ページを開き直した時、ON状態が保存されていればトグルとタイマーを復元する
-            if (localStorage.getItem(timerStorageKey) && toggleCheckbox) {
+            // ページを開き直した時、ON状態が保存されていればトグルとタイマーを復元する（同一タブ内でのみ）
+            if (sessionStorage.getItem(timerStorageKey) && toggleCheckbox) {
                 toggleCheckbox.checked = true;
                 toggleImage('level-media', 'status-level', true);
             }

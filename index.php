@@ -166,7 +166,7 @@ foreach ([1, 2, 3, 4] as $lvl) {
             <a href="smart_plugs.php" class="hover:text-white transition-colors duration-300 focus:outline-none">Smart Plugs</a>
             <?php if(isset($_SESSION['user_id'])): ?>
             <a href="dashboard.php" class="hover:text-white transition-colors duration-300 focus:outline-none">Dashboard</a>
-            <a href="?logout=1" onclick="[1,2,3,4].forEach(function(l){localStorage.removeItem('lw_level_on_since_'+l);})" class="hover:text-white transition-colors duration-300 focus:outline-none">Logout</a>
+            <a href="?logout=1" onclick="[1,2,3,4].forEach(function(l){sessionStorage.removeItem('lw_level_on_since_'+l);})" class="hover:text-white transition-colors duration-300 focus:outline-none">Logout</a>
             <?php else: ?>
             <a href="login.php" class="hover:text-white transition-colors duration-300 focus:outline-none">Login</a>
             <?php endif; ?>
@@ -472,7 +472,7 @@ setInterval(keepAlive, 5000);
             function tick(level) {
                 const storageKey = 'lw_level_on_since_' + level;
                 const onTimerEl = document.getElementById('on-timer' + level);
-                const since = parseInt(localStorage.getItem(storageKey) || '0', 10);
+                const since = parseInt(sessionStorage.getItem(storageKey) || '0', 10);
                 if (!since || !onTimerEl) return;
                 onTimerEl.textContent = '(' + formatElapsed(Date.now() - since) + ')';
             }
@@ -481,8 +481,8 @@ setInterval(keepAlive, 5000);
                 const storageKey = 'lw_level_on_since_' + level;
                 const onTimerEl = document.getElementById('on-timer' + level);
                 if (!onTimerEl) return;
-                if (!localStorage.getItem(storageKey)) {
-                    localStorage.setItem(storageKey, String(Date.now()));
+                if (!sessionStorage.getItem(storageKey)) {
+                    sessionStorage.setItem(storageKey, String(Date.now()));
                 }
                 onTimerEl.classList.remove('hidden');
                 tick(level);
@@ -493,18 +493,18 @@ setInterval(keepAlive, 5000);
             window.stopOnTimer = function(level) {
                 const storageKey = 'lw_level_on_since_' + level;
                 const onTimerEl = document.getElementById('on-timer' + level);
-                localStorage.removeItem(storageKey);
+                sessionStorage.removeItem(storageKey);
                 if (onTimerEl) onTimerEl.classList.add('hidden');
                 if (onTimerIntervals[level]) clearInterval(onTimerIntervals[level]);
                 onTimerIntervals[level] = null;
             };
 
-            // ページを開き直した時、ON状態が保存されていればトグルとタイマーを復元する
+            // ページを開き直した時、ON状態が保存されていればトグルとタイマーを復元する（同一タブ内でのみ）
             document.addEventListener('DOMContentLoaded', function() {
                 [1, 2, 3, 4].forEach(function(level) {
                     const storageKey = 'lw_level_on_since_' + level;
                     const checkbox = document.getElementById('toggleTest' + level);
-                    if (localStorage.getItem(storageKey) && checkbox) {
+                    if (sessionStorage.getItem(storageKey) && checkbox) {
                         checkbox.checked = true;
                         toggleImage('test' + level + '-media', 'status-test' + level, true);
                     }

@@ -421,7 +421,7 @@ if (!empty($devices)) {
                 <?php if (isMobile()): ?>
                 <a href="?force_pc=0" class="text-xs border border-white/30 px-3 py-1 rounded hover:bg-white/10 transition">スマホ版に戻る</a>
                 <?php endif; ?>
-                <a href="?logout=1" onclick="[1,2,3,4].forEach(function(l){localStorage.removeItem('lw_level_on_since_'+l);})" class="text-xs border border-white/30 px-3 py-1 rounded hover:bg-white/10 transition">Logout</a>
+                <a href="?logout=1" onclick="[1,2,3,4].forEach(function(l){sessionStorage.removeItem('lw_level_on_since_'+l);})" class="text-xs border border-white/30 px-3 py-1 rounded hover:bg-white/10 transition">Logout</a>
             </div>
         </div>
 
