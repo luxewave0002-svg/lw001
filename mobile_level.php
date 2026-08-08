@@ -15,7 +15,9 @@ $levelPasswordError = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verify_level_password') {
     $token = $_POST['csrf_token'] ?? '';
     if (!verifyCsrfToken($token)) {
-        die('CSRF token validation failed. 不正なリクエストです。');
+        // 不正/期限切れトークンの場合はエラー文言を出さず、通常のLevel画面（未解除状態）に戻す
+        header("Location: mobile_level.php?level=" . $level);
+        exit;
     }
 
     $inputPassword = $_POST['level_password'] ?? '';
