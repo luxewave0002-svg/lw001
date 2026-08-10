@@ -437,6 +437,8 @@ setInterval(keepAlive, 5000);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             }, 50);
+            // 現在表示中のタブを記憶しておく（バックグラウンド後の再読み込みで表示がズレないように）
+            sessionStorage.setItem('lw_active_page', pageId);
         }
 
         // ON/OFF切り替え関数
@@ -520,8 +522,13 @@ setInterval(keepAlive, 5000);
         })();
 
         // ページ読み込み時の処理 (PHPからの変数を受け取る)
+        // Level解除等のPOST直後はサーバー側の指定を優先し、それ以外（＝再読み込み等）は
+        // 直前に見ていたタブをsessionStorageから復元する
         window.addEventListener('DOMContentLoaded', () => {
-            showPage('<?php echo $activePage; ?>');
+            const serverPage = '<?php echo $activePage; ?>';
+            const rememberedPage = sessionStorage.getItem('lw_active_page');
+            const initialPage = (serverPage === 'home' && rememberedPage) ? rememberedPage : serverPage;
+            showPage(initialPage);
         });
     </script>
     <!-- バックグラウンド・画面ロック延命用サイレント音声（隠し要素。muted指定はしない＝無音の中身を再生することで背景オーディオ扱いにする） -->
