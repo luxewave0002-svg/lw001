@@ -3,13 +3,18 @@ require_once 'db.php';
 
 // ログアウト処理
 if (isset($_GET['logout'])) {
-    session_destroy();
+    logoutUser($pdo);
     header("Location: mobile_login.php");
     exit;
 }
 
 // ログイン必須（未ログインならログインページへ）
 requireLogin($pdo, 'mobile_login.php');
+
+// 自分に発行されているLevelパスワード一覧を取得
+$myLevelPwStmt = $pdo->prepare("SELECT level, password FROM level_passwords WHERE user_id = ? AND revoked_at IS NULL AND password IS NOT NULL ORDER BY level ASC");
+$myLevelPwStmt->execute([$_SESSION['user_id']]);
+$myLevelPasswords = $myLevelPwStmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -77,6 +82,28 @@ requireLogin($pdo, 'mobile_login.php');
         <br>
         <a href="?logout=1" class="text-xs text-gray-500 underline underline-offset-4 tracking-widest mt-4 inline-block">LOGOUT</a>
         <?php endif; ?>
+
+        <?php if (!empty($myLevelPasswords)): ?>
+        <div class="mt-8 pt-6 border-t border-white/10">
+            <button type="button" id="lw-toggle-passwords" onclick="lwTogglePasswordList()" class="text-xs text-gray-400 hover:text-white tracking-widest border border-white/20 rounded-full px-5 py-2 transition-colors">パスワード</button>
+            <div id="lw-password-list" class="hidden mt-5 flex flex-col gap-2 text-left">
+                <?php foreach ($myLevelPasswords as $lvlPw): ?>
+                    <div class="flex items-center justify-between gap-2 bg-black/30 border border-white/10 px-3 py-2 rounded-lg">
+                        <span class="text-xs text-gray-400 shrink-0">Level.<?php echo (int)$lvlPw['level']; ?></span>
+                        <span class="font-mono text-white text-sm truncate"><?php echo htmlspecialchars($lvlPw['password']); ?></span>
+                        <button type="button" onclick="lwCopyLevelPassword(this, '<?php echo htmlspecialchars($lvlPw['password'], ENT_QUOTES); ?>')" aria-label="パスワードをコピー" class="text-gray-400 hover:text-white transition-colors p-1 shrink-0 focus:outline-none">
+                            <svg class="copy-icon w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+                            </svg>
+                            <svg class="check-icon w-4 h-4 hidden text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                        </button>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <script>
@@ -126,6 +153,42 @@ requireLogin($pdo, 'mobile_login.php');
                 if (document.visibilityState === 'visible') tryPlay();
             });
         })();
+    </script>
+    <script>
+        function lwTogglePasswordList() {
+            const list = document.getElementById('lw-password-list');
+            const btn = document.getElementById('lw-toggle-passwords');
+            const isHidden = list.classList.contains('hidden');
+            list.classList.toggle('hidden');
+            btn.textContent = isHidden ? '隠す' : 'パスワード';
+        }
+        function lwCopyLevelPassword(button, password) {
+            navigator.clipboard.writeText(password).then(function() {
+                const copyIcon = button.querySelector('.copy-icon');
+                const checkIcon = button.querySelector('.check-icon');
+                copyIcon.classList.add('hidden');
+                checkIcon.classList.remove('hidden');
+                setTimeout(function() {
+                    checkIcon.classList.add('hidden');
+                    copyIcon.classList.remove('hidden');
+                }, 1500);
+            });
+        }
+        // --- スリープ・切断対策（ショート・ポーリング） ---
+        function keepAlive() {
+            fetch("keep_alive.php")
+                .then(function(response) {
+                    if (!response.ok) { console.error("Keep-alive error"); return; }
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (data && data.loggedIn === false) {
+                        window.location.href = "mobile_login.php";
+                    }
+                })
+                .catch(function(error) { console.error("通信維持エラー:", error); });
+        }
+        setInterval(keepAlive, 5000);
     </script>
 </body>
 </html>
