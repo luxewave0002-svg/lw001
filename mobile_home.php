@@ -85,7 +85,7 @@ $myLevelPasswords = $myLevelPwStmt->fetchAll();
 
         <?php if (!empty($myLevelPasswords)): ?>
         <div class="mt-8 pt-6 border-t border-white/10">
-            <button type="button" id="lw-toggle-passwords" onclick="lwTogglePasswordList()" class="text-xs text-gray-400 hover:text-white tracking-widest border border-white/20 rounded-full px-5 py-2 transition-colors">パスワード</button>
+            <button type="button" id="lw-toggle-passwords" onclick="lwTogglePasswordList()" class="text-xs text-gray-400 hover:text-white tracking-widest border border-white/20 rounded-full px-5 py-2 transition-colors">PASSWORD</button>
             <div id="lw-password-list" class="hidden mt-5 flex flex-col gap-2 text-left">
                 <?php foreach ($myLevelPasswords as $lvlPw): ?>
                     <div class="flex items-center justify-between gap-2 bg-black/30 border border-white/10 px-3 py-2 rounded-lg">
@@ -160,7 +160,7 @@ $myLevelPasswords = $myLevelPwStmt->fetchAll();
             const btn = document.getElementById('lw-toggle-passwords');
             const isHidden = list.classList.contains('hidden');
             list.classList.toggle('hidden');
-            btn.textContent = isHidden ? '隠す' : 'パスワード';
+            btn.textContent = isHidden ? 'HIDE' : 'PASSWORD';
         }
         function lwCopyLevelPassword(button, password) {
             navigator.clipboard.writeText(password).then(function() {
