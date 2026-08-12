@@ -80,7 +80,7 @@ $imagePath = getImagePath((string)$level);
         .toggle-checkbox:checked ~ .toggle-dot { transform: translateX(1.5rem); background-color: #000000; }
     </style>
 </head>
-<body class="bg-gradient-to-br from-black via-blue-900 to-black text-white min-h-screen flex flex-col items-center justify-center p-6 relative z-0 overflow-hidden">
+<body class="bg-gradient-to-br from-black via-blue-900 to-black text-white min-h-screen flex flex-col items-center p-6 relative z-0 overflow-y-auto">
 <!-- インアプリブラウザ（LINE/Facebook/Instagram等）検知バナー -->
 <div id="lw-inapp-banner" class="hidden fixed top-0 left-0 right-0 z-[9999] bg-black/95 border-b border-white/20 text-white text-xs sm:text-sm px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-2 backdrop-blur-md">
     <span class="tracking-wide leading-relaxed">アプリ内ブラウザで表示しています。正しく動作しない場合は右上「…」等のメニューから「ブラウザで開く」を選択してください。</span>
@@ -110,7 +110,7 @@ $imagePath = getImagePath((string)$level);
 
     <canvas id="waveCanvas" class="fixed top-0 left-0 w-full h-full z-[-1] pointer-events-none"></canvas>
 
-    <div class="text-center bg-black/40 p-8 md:p-10 rounded-2xl border border-white/20 backdrop-blur-md shadow-2xl w-full max-w-sm relative z-10">
+    <div class="text-center bg-black/40 p-8 md:p-10 rounded-2xl border border-white/20 backdrop-blur-md shadow-2xl w-full max-w-sm relative z-10 my-auto">
         <h1 class="brand-font text-2xl font-extralight tracking-[0.2em] mb-8">Level.<?php echo $level; ?></h1>
 
         <?php if ($isLocked): ?>
@@ -173,6 +173,9 @@ $imagePath = getImagePath((string)$level);
 
         <a href="mobile.php" class="text-xs text-gray-500 underline underline-offset-4 tracking-widest mt-6 inline-block">TOPに戻る</a>
     </div>
+
+    <!-- 下部の余白スペーサー：スクロール可能な領域を確保し、Safariの意図しないpull-to-refreshを防ぐ -->
+    <div class="w-full shrink-0" style="height: 40vh;" aria-hidden="true"></div>
 
     <script>
         // Levelパスワードの保存・自動入力（Level番号ごとにlocalStorageへ保存。サーバーには送信しません）
