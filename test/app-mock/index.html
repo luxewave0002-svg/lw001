@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LUXE WAVE — App Mock</title>
+<style>
+  :root{
+    --navy: #1e3a8a;
+    --black: #000000;
+    --white: #ffffff;
+    --gray-400: #9CA3AF;
+    --gray-500: #6B7280;
+    --glass-bg: rgba(0,0,0,0.35);
+    --glass-border: rgba(255,255,255,0.16);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    min-height:100vh;
+    background:#0a0a0a;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:-apple-system, "SF Pro Display", "Noto Sans JP", "Hiragino Sans", sans-serif;
+    padding:40px 16px;
+  }
+
+  /* ---- iPhone frame ---- */
+  .device{
+    width:390px;
+    height:844px;
+    border-radius:54px;
+    background:#050505;
+    padding:14px;
+    box-shadow:0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+    position:relative;
+  }
+  .screen{
+    width:100%;
+    height:100%;
+    border-radius:42px;
+    overflow:hidden;
+    position:relative;
+    background:linear-gradient(135deg, var(--black) 0%, var(--navy) 50%, var(--black) 100%);
+  }
+  .notch{
+    position:absolute;
+    top:14px; left:50%; transform:translateX(-50%);
+    width:120px; height:28px;
+    background:#050505;
+    border-radius:20px;
+    z-index:50;
+  }
+
+  .page{
+    position:absolute; inset:0;
+    display:none;
+    flex-direction:column;
+    padding:70px 22px 90px;
+    overflow-y:auto;
+  }
+  .page.active{display:flex;}
+
+  /* ---- typography ---- */
+  .wordmark{
+    text-align:center;
+    font-weight:200;
+    letter-spacing:0.35em;
+    font-size:26px;
+    color:var(--white);
+    text-transform:uppercase;
+  }
+  .subword{
+    text-align:center;
+    font-weight:200;
+    letter-spacing:0.25em;
+    font-size:10px;
+    color:var(--gray-400);
+    margin-top:6px;
+    text-transform:uppercase;
+  }
+  label.field-label{
+    font-size:10px;
+    letter-spacing:0.15em;
+    color:var(--gray-400);
+    font-weight:300;
+    margin-bottom:6px;
+    display:block;
+    text-transform:uppercase;
+  }
+  .divider{
+    height:1px;
+    background:rgba(255,255,255,0.12);
+    width:100%;
+    margin:18px 0;
+  }
+
+  /* ---- glass components ---- */
+  .glass-input{
+    width:100%;
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    border-radius:14px;
+    padding:14px 16px;
+    color:var(--white);
+    font-size:13px;
+    font-weight:300;
+    letter-spacing:0.03em;
+    position:relative;
+  }
+  .input-wrap{position:relative; margin-bottom:14px;}
+  .eye-toggle{
+    position:absolute; right:14px; top:50%; transform:translateY(-50%);
+    width:16px; height:16px; opacity:0.6; cursor:pointer;
+  }
+
+  .pill-btn{
+    display:block;
+    width:100%;
+    text-align:center;
+    background:rgba(255,255,255,0.10);
+    border:1px solid rgba(255,255,255,0.3);
+    border-radius:999px;
+    padding:14px;
+    color:var(--white);
+    font-size:11px;
+    font-weight:300;
+    letter-spacing:0.25em;
+    text-transform:uppercase;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    cursor:pointer;
+    transition:background 0.2s ease;
+  }
+  .pill-btn:hover{background:rgba(255,255,255,0.18);}
+  .pill-btn.small{
+    padding:10px; font-size:9px; letter-spacing:0.18em;
+  }
+  .pill-btn.outline{
+    background:transparent;
+  }
+
+  .link-text{
+    text-align:center;
+    font-size:10px;
+    color:var(--gray-400);
+    text-decoration:underline;
+    font-weight:300;
+    letter-spacing:0.05em;
+    margin-top:14px;
+    cursor:pointer;
+  }
+
+  .checkbox-row{
+    display:flex; align-items:center; gap:8px;
+    font-size:10px; color:var(--gray-400); font-weight:300;
+    letter-spacing:0.03em; margin-bottom:8px;
+  }
+  .checkbox{
+    width:14px; height:14px;
+    border:1px solid rgba(255,255,255,0.4);
+    border-radius:3px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .checkbox.checked{background:var(--white);}
+  .checkbox.checked::after{
+    content:"✓"; color:#000; font-size:9px; font-weight:700;
+  }
+
+  /* ---- nav (top) ---- */
+  .topnav{
+    position:absolute; top:0; left:0; right:0;
+    padding:52px 22px 10px;
+    display:flex; justify-content:center; gap:14px;
+    z-index:10;
+    background:linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+  }
+  .topnav span{
+    font-size:8px; letter-spacing:0.12em; color:var(--gray-400);
+    font-weight:300; text-transform:uppercase;
+  }
+
+  /* ---- home grid (legacy, kept for level submenu reuse) ---- */
+  .level-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    margin-top:20px;
+  }
+  .level-cell{
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    border-radius:18px;
+    padding:26px 0;
+    text-align:center;
+    font-weight:200;
+    letter-spacing:0.15em;
+    font-size:13px;
+    color:var(--white);
+    cursor:pointer;
+  }
+
+  /* ---- home vertical nav ---- */
+  .nav-list{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    margin-top:36px;
+  }
+  .nav-row{
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    border-radius:16px;
+    padding:18px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    cursor:pointer;
+  }
+  .nav-row .label{
+    font-weight:200;
+    letter-spacing:0.18em;
+    font-size:12px;
+    color:var(--white);
+    text-transform:uppercase;
+    text-align:center;
+  }
+  .nav-row .chev{
+    color:var(--gray-500);
+    font-size:12px;
+    font-weight:300;
+    position:absolute;
+    right:20px;
+    top:50%;
+    transform:translateY(-50%);
+  }
+  .submenu-row{
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    border-radius:14px;
+    padding:15px 18px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    cursor:pointer;
+    margin-bottom:10px;
+  }
+  .submenu-row .label{
+    font-weight:200;
+    letter-spacing:0.15em;
+    font-size:11px;
+    color:var(--white);
+    text-transform:uppercase;
+  }
+  .info-card{
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    border-radius:22px;
+    padding:26px 20px;
+    margin-top:10px;
+  }
+  .info-title{
+    text-align:center;
+    font-weight:200;
+    letter-spacing:0.15em;
+    font-size:22px;
+    color:var(--white);
+  }
+  .info-divider{
+    height:1px;
+    background:rgba(255,255,255,0.15);
+    width:100%;
+    margin:20px 0 22px;
+  }
+  .info-row{
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--glass-border);
+    border-radius:14px;
+    padding:16px 18px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .info-row .info-label{
+    font-weight:300;
+    letter-spacing:0.15em;
+    font-size:13px;
+    color:var(--white);
+  }
+  .info-row .info-value{
+    font-weight:300;
+    letter-spacing:0.02em;
+    font-size:12px;
+    color:var(--gray-500);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .ext-icon{
+    width:11px; height:11px;
+    border:1.3px solid var(--gray-500);
+    border-radius:2px;
+    position:relative;
+    display:inline-block;
+  }
+  .ext-icon::after{
+    content:"";
+    position:absolute; top:-3px; right:-3px;
+    width:5px; height:5px;
+    border-top:1.3px solid var(--gray-500);
+    border-right:1.3px solid var(--gray-500);
+  }
+
+  /* ---- admin ---- */
+  .rect-btn{
+    display:block;
+    text-align:center;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.25);
+    border-radius:9px;
+    padding:11px 14px;
+    color:var(--white);
+    font-size:10.5px;
+    font-weight:300;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+  }
+  .danger-btn{
+    background:rgba(153,27,27,0.25);
+    border:1px solid rgba(248,113,113,0.45);
+    color:#fca5a5;
+  }
+  .admin-header{
+    display:flex; align-items:flex-start; justify-content:space-between;
+    margin-bottom:4px;
+  }
+  .admin-header .title{
+    font-weight:200; letter-spacing:0.1em; font-size:15px; color:var(--white);
+  }
+  .admin-header .sub{
+    font-size:9px; color:var(--gray-500); margin-top:4px; letter-spacing:0.03em;
+  }
+  .admin-header .actions{
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .admin-header .actions .rect-btn{padding:6px 12px; font-size:8.5px;}
+  .admin-tabs{
+    display:flex; gap:6px; margin:16px 0 18px;
+    background:rgba(255,255,255,0.05);
+    border:1px solid var(--glass-border);
+    border-radius:11px; padding:4px;
+  }
+  .admin-tabs button{
+    flex:1; background:transparent; border:none; color:var(--gray-500);
+    font-size:9px; letter-spacing:0.08em; font-weight:300; text-transform:uppercase;
+    padding:9px 2px; border-radius:8px; cursor:pointer; font-family:inherit;
+  }
+  .admin-tabs button.active{background:rgba(255,255,255,0.14); color:var(--white);}
+  .admin-sub{display:none; flex-direction:column;}
+  .admin-sub.active{display:flex;}
+  .badge-row{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+  .badge{
+    font-size:8.5px; letter-spacing:0.06em; color:var(--gray-400);
+    background:rgba(255,255,255,0.05); border:1px solid var(--glass-border);
+    border-radius:8px; padding:6px 10px; font-weight:300;
+  }
+  .search-bar{
+    background:rgba(255,255,255,0.04); border:1px solid var(--glass-border);
+    border-radius:10px; padding:11px 14px; font-size:11px; color:var(--gray-500);
+    font-weight:300; margin-bottom:16px;
+  }
+  .user-card{
+    background:var(--glass-bg); border:1px solid var(--glass-border);
+    border-radius:14px; padding:16px; margin-bottom:14px;
+  }
+  .user-card .uid{font-size:11.5px; color:var(--white); font-weight:300; letter-spacing:0.03em;}
+  .user-card .umeta{font-size:9px; color:var(--gray-500); margin-top:3px;}
+  .user-card .row2{display:flex; gap:8px; margin-top:12px;}
+  .user-card .row2 .rect-btn{flex:1;}
+  .device-line{
+    display:flex; align-items:center; gap:8px; margin-top:12px;
+    background:rgba(255,255,255,0.03); border:1px solid var(--glass-border);
+    border-radius:9px; padding:9px 11px;
+  }
+  .device-line .dname{font-size:9.5px; color:var(--gray-400); flex:1;}
+  .device-line input{
+    width:36px; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border);
+    border-radius:6px; color:var(--white); font-size:10px; text-align:center; padding:4px 0;
+    font-family:inherit;
+  }
+  .device-line .rect-btn{padding:6px 10px; font-size:8px;}
+  .level-pw-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px;}
+  .level-pw-cell{
+    background:rgba(255,255,255,0.03); border:1px solid var(--glass-border);
+    border-radius:9px; padding:9px 10px;
+  }
+  .level-pw-cell .lvl{font-size:9px; color:var(--gray-400); letter-spacing:0.08em; margin-bottom:6px;}
+  .level-pw-cell .btnrow{display:flex; gap:5px;}
+  .level-pw-cell .rect-btn{padding:6px 6px; font-size:7.5px; flex:1;}
+  .log-row{
+    background:var(--glass-bg); border:1px solid var(--glass-border);
+    border-radius:11px; padding:12px 14px; margin-bottom:8px;
+  }
+  .log-row .laction{font-size:10.5px; color:var(--white); font-weight:300;}
+  .log-row .lmeta{font-size:8.5px; color:var(--gray-500); margin-top:4px; display:flex; justify-content:space-between;}
+  .media-card{
+    background:var(--glass-bg); border:1px solid var(--glass-border);
+    border-radius:14px; padding:16px; margin-bottom:14px;
+  }
+  .media-card .mtitle{font-size:11.5px; color:var(--white); letter-spacing:0.1em; margin-bottom:10px;}
+  .file-input{
+    background:rgba(255,255,255,0.03); border:1px dashed var(--glass-border);
+    border-radius:9px; padding:14px; text-align:center; font-size:9px; color:var(--gray-500);
+    margin-bottom:10px;
+  }
+  .media-card .row2{display:flex; gap:8px;}
+  .media-card .row2 .rect-btn{flex:1;}
+  .settings-block{
+    background:var(--glass-bg); border:1px solid var(--glass-border);
+    border-radius:14px; padding:16px; margin-bottom:16px;
+  }
+  .settings-block .stitle{font-size:10.5px; color:var(--white); letter-spacing:0.1em; margin-bottom:12px; text-transform:uppercase;}
+  .admin-acc-row{
+    display:flex; justify-content:space-between; align-items:center;
+    background:rgba(255,255,255,0.03); border:1px solid var(--glass-border);
+    border-radius:9px; padding:9px 12px; margin-bottom:8px;
+  }
+  .admin-acc-row .aemail{font-size:9.5px; color:var(--gray-400);}
+  .admin-acc-row .rect-btn{padding:6px 10px; font-size:8px;}
+  .placeholder-body{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+  }
+  .placeholder-body .ph-text{
+    font-size:10px;
+    letter-spacing:0.1em;
+    color:var(--gray-500);
+    font-weight:300;
+    line-height:1.8;
+  }
+
+  /* ---- level detail ---- */
+  .toggle-row{
+    display:flex; align-items:center; gap:12px; margin:18px 0 6px;
+  }
+  .toggle-label{
+    font-size:10px; letter-spacing:0.15em; color:var(--gray-400); font-weight:300; text-transform:uppercase;
+  }
+  .switch{
+    width:44px; height:24px; border-radius:999px;
+    background:rgba(255,255,255,0.9);
+    position:relative;
+    cursor:pointer;
+  }
+  .switch::after{
+    content:""; position:absolute; top:2px; right:2px;
+    width:20px; height:20px; border-radius:50%; background:#000;
+  }
+  .switch.off{background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.3);}
+  .switch.off::after{background:#666; left:2px; right:auto;}
+  .status-on{color:var(--white); font-size:10px; font-weight:300; letter-spacing:0.1em;}
+  .timer{
+    font-family:"SF Mono", monospace;
+    font-size:10px; color:var(--gray-400); margin-left:auto;
+  }
+  .media-panel{
+    margin-top:20px;
+    aspect-ratio:1/1;
+    border-radius:20px;
+    border:1px solid var(--glass-border);
+    background:
+      radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06), transparent 60%),
+      repeating-linear-gradient(60deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 26px),
+      repeating-linear-gradient(-60deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 26px),
+      linear-gradient(160deg, #0a1030, #050510);
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    gap:10px;
+    box-shadow: inset 0 0 60px rgba(30,58,138,0.35);
+  }
+  .media-panel .lw-icon{
+    width:34px; height:34px; border:1.4px solid rgba(255,255,255,0.85); border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .media-panel .lw-icon::after{content:"";width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.85);}
+  .media-panel .lw-word{font-size:11px; letter-spacing:0.3em; color:rgba(255,255,255,0.8); font-weight:200;}
+
+  .corner-row{
+    display:flex; justify-content:space-between; margin-top:16px;
+  }
+  .corner-row .pill-btn.small{width:auto; padding:8px 16px;}
+
+  /* ---- dashboard ---- */
+  .section-header{
+    font-size:9px; letter-spacing:0.18em; color:var(--gray-400);
+    font-weight:300; text-transform:uppercase; margin:20px 0 10px;
+  }
+  .device-card{
+    background:var(--glass-bg); border:1px solid var(--glass-border);
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    border-radius:14px; padding:14px 16px;
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .device-card .name{font-size:11px; font-weight:300; color:var(--white); letter-spacing:0.05em;}
+  .device-card .sub{font-size:9px; color:var(--gray-500); margin-top:2px;}
+  .password-row{
+    background:var(--glass-bg); border:1px solid var(--glass-border);
+    border-radius:999px; padding:10px 16px;
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:8px;
+    font-size:10px;
+  }
+  .password-row .lvl{color:var(--gray-400); letter-spacing:0.1em;}
+  .password-row .pw{font-family:"SF Mono", monospace; color:var(--white); letter-spacing:0.05em;}
+  .copy-icon{
+    width:14px; height:14px; border:1px solid rgba(255,255,255,0.5); border-radius:3px; opacity:0.7;
+  }
+
+  /* ---- register success ---- */
+  .success-wrap{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    flex:1; gap:18px; text-align:center;
+  }
+  .check-circle{
+    width:64px; height:64px; border-radius:50%;
+    border:1.5px solid rgba(140,220,170,0.8);
+    display:flex; align-items:center; justify-content:center;
+    color:rgba(140,220,170,0.9); font-size:26px; font-weight:200;
+  }
+  .success-text{font-size:12px; color:var(--gray-400); font-weight:300; letter-spacing:0.05em;}
+
+  /* ---- banner ---- */
+  .warn-banner{
+    position:absolute; top:0; left:0; right:0;
+    padding:52px 16px 10px;
+    background:rgba(0,0,0,0.55);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    display:flex; align-items:center; justify-content:space-between;
+    z-index:20; gap:10px;
+    display:none;
+  }
+  .warn-banner.show{display:flex;}
+  .warn-banner .msg{font-size:9px; color:var(--gray-400); font-weight:300; line-height:1.5; flex:1;}
+  .warn-banner .close{font-size:14px; color:var(--gray-400); cursor:pointer;}
+
+  /* ---- screen switcher (outside device) ---- */
+  .switcher{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    display:flex; gap:6px; background:rgba(20,20,20,0.9);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:999px; padding:6px; backdrop-filter:blur(10px);
+    z-index:100; flex-wrap:wrap; max-width:92vw; justify-content:center;
+  }
+  .switcher button{
+    background:transparent; border:none; color:var(--gray-400);
+    font-size:9px; letter-spacing:0.08em; font-weight:300;
+    padding:8px 12px; border-radius:999px; cursor:pointer;
+    font-family:inherit; text-transform:uppercase;
+  }
+  .switcher button.active{background:rgba(255,255,255,0.12); color:#fff;}
+</style>
+</head>
+<body>
+
+<div class="device">
+  <div class="notch"></div>
+  <div class="screen">
+
+    <div class="warn-banner" id="banner">
+      <div class="msg">この画面はアプリ内ブラウザで開かれています。安定した動作のため、標準ブラウザでの閲覧を推奨します。</div>
+      <div class="pill-btn small outline" style="width:auto;padding:6px 12px;" onclick="event.stopPropagation()">URLをコピー</div>
+      <div class="close" onclick="document.getElementById('banner').classList.remove('show')">×</div>
+    </div>
+
+    <!-- 1. LOGIN -->
+    <div class="page active" id="login">
+      <div style="flex:1"></div>
+      <div class="wordmark">Luxe Wave</div>
+      <div class="subword">Members</div>
+      <div style="height:36px"></div>
+      <label class="field-label">Email</label>
+      <div class="input-wrap"><div class="glass-input">you@example.com</div></div>
+      <label class="field-label">Password</label>
+      <div class="input-wrap"><div class="glass-input">••••••••<span class="eye-toggle">👁</span></div></div>
+      <div class="checkbox-row"><div class="checkbox checked"></div>メールアドレスを保存する</div>
+      <div class="checkbox-row"><div class="checkbox"></div>パスワードを保存する</div>
+      <div style="height:12px"></div>
+      <div class="pill-btn" onclick="show('home')">Login</div>
+      <div class="link-text" onclick="show('register')">新規アカウント作成</div>
+      <div class="link-text">パスワードを忘れた方はこちら</div>
+      <div style="flex:2"></div>
+    </div>
+
+    <!-- 2. HOME -->
+    <div class="page" id="home">
+      <div class="wordmark" style="font-size:22px">Luxe Wave</div>
+      <div class="nav-list">
+        <div class="nav-row" onclick="show('modulationMenu')"><div class="label">Wave Field Tech</div><div class="chev">›</div></div>
+        <div class="nav-row" onclick="show('smartPlugPage')"><div class="label">Smart Plug</div><div class="chev">›</div></div>
+        <div class="nav-row" onclick="show('breakerPage')"><div class="label">Breaker</div><div class="chev">›</div></div>
+        <div class="nav-row" onclick="show('accessoryPage')"><div class="label">Accessory</div><div class="chev">›</div></div>
+        <div class="nav-row" onclick="show('dashboard')"><div class="label">Dashboard</div><div class="chev">›</div></div>
+        <div class="nav-row" onclick="show('infoPage')"><div class="label">Info</div><div class="chev">›</div></div>
+      </div>
+      <div style="flex:1"></div>
+      <div class="link-text" onclick="show('login')">LOGOUT</div>
+    </div>
+
+    <!-- 2b. MODULATION SUBMENU -->
+    <div class="page" id="modulationMenu">
+      <div class="wordmark" style="text-align:left; font-size:18px; letter-spacing:0.2em;">Wave Field Tech</div>
+      <div class="divider"></div>
+      <div class="submenu-row" onclick="show('level')"><div class="label">Level.1</div><div class="chev">›</div></div>
+      <div class="submenu-row" onclick="show('level')"><div class="label">Level.2</div><div class="chev">›</div></div>
+      <div class="submenu-row" onclick="show('level')"><div class="label">Level.3</div><div class="chev">›</div></div>
+      <div class="submenu-row" onclick="show('level')"><div class="label">Level.4</div><div class="chev">›</div></div>
+      <div class="submenu-row" onclick="show('appleWatchPage')"><div class="label">Apple Watch</div><div class="chev">›</div></div>
+      <div style="height:8px"></div>
+      <div class="pill-btn outline small" onclick="show('dashboard')">Password</div>
+      <div style="flex:1"></div>
+      <div class="link-text" onclick="show('home')">HOMEに戻る</div>
+    </div>
+
+    <!-- 2c. SMART PLUG -->
+    <div class="page" id="smartPlugPage">
+      <div class="wordmark" style="text-align:left; font-size:18px; letter-spacing:0.2em;">Smart Plug</div>
+      <div class="divider"></div>
+      <div class="device-card">
+        <div><div class="name">リビング スマートプラグ</div><div class="sub">SwitchBot Plug Mini</div></div>
+        <div class="switch" style="width:34px;height:20px;"></div>
+      </div>
+      <div class="device-card">
+        <div><div class="name">寝室 スマートプラグ</div><div class="sub">SwitchBot Plug Mini</div></div>
+        <div class="switch off" style="width:34px;height:20px;"></div>
+      </div>
+      <div style="flex:1"></div>
+      <div class="link-text" onclick="show('home')">HOMEに戻る</div>
+    </div>
+
+    <!-- 2d. BREAKER -->
+    <div class="page" id="breakerPage">
+      <div class="wordmark" style="text-align:left; font-size:18px; letter-spacing:0.2em;">Breaker</div>
+      <div class="divider"></div>
+      <div class="placeholder-body"><div class="ph-text">ブレーカー制御<br>コンテンツ準備中</div></div>
+      <div class="link-text" onclick="show('home')">HOMEに戻る</div>
+    </div>
+
+    <!-- 2e. ACCESSORY -->
+    <div class="page" id="accessoryPage">
+      <div class="wordmark" style="text-align:left; font-size:18px; letter-spacing:0.2em;">Accessory</div>
+      <div class="divider"></div>
+      <div class="placeholder-body"><div class="ph-text">アクセサリー連携<br>コンテンツ準備中</div></div>
+      <div class="link-text" onclick="show('home')">HOMEに戻る</div>
+    </div>
+
+    <!-- 2f. INFO -->
+    <div class="page" id="infoPage" style="padding-top:100px;">
+      <div class="info-card">
+        <div class="info-title">Info</div>
+        <div class="info-divider"></div>
+        <div class="info-row">
+          <div class="info-label">note</div>
+          <div class="info-value">note.com/luxewave <span class="ext-icon"></span></div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">SNS</div>
+          <div class="info-value">coming soon...</div>
+        </div>
+        <div class="info-row" style="margin-bottom:0;">
+          <div class="info-label">独自資料</div>
+          <div class="info-value">coming soon...</div>
+        </div>
+      </div>
+      <div style="height:28px"></div>
+      <div class="pill-btn outline" onclick="show('home')">Back to Home</div>
+    </div>
+
+    <!-- 2g. APPLE WATCH -->
+    <div class="page" id="appleWatchPage">
+      <div class="wordmark" style="text-align:left; font-size:18px; letter-spacing:0.2em;">Apple Watch</div>
+      <div class="divider"></div>
+      <div class="placeholder-body"><div class="ph-text">Apple Watch 連携ページ<br>コンテンツ準備中</div></div>
+      <div class="link-text" onclick="show('modulationMenu')">Wave Field Techに戻る</div>
+    </div>
+
+    <!-- 6. ADMIN LOGIN -->
+    <div class="page" id="adminLogin">
+      <div style="flex:1"></div>
+      <div class="wordmark" id="adminLoginTitle">Admin Login</div>
+      <div style="height:30px"></div>
+      <label class="field-label">Admin Email</label>
+      <div class="input-wrap"><div class="glass-input">admin@luxewave.jp</div></div>
+      <label class="field-label">Admin Password</label>
+      <div class="input-wrap"><div class="glass-input">••••••••<span class="eye-toggle">👁</span></div></div>
+      <div class="checkbox-row"><div class="checkbox"></div>メールアドレスを保存する</div>
+      <div class="checkbox-row"><div class="checkbox"></div>パスワードを保存する</div>
+      <div style="height:12px"></div>
+      <div class="pill-btn" onclick="show('adminDashboard')">Login</div>
+      <div style="flex:2"></div>
+    </div>
+
+    <!-- 7. ADMIN DASHBOARD -->
+    <div class="page" id="adminDashboard" style="padding-top:60px;">
+      <div class="admin-header">
+        <div>
+          <div class="title">Admin Dashboard</div>
+          <div class="sub">admin@luxewave.jp（マスター）</div>
+        </div>
+        <div class="actions">
+          <div class="rect-btn" onclick="show('home')">L/W</div>
+          <div class="rect-btn" onclick="show('login')">Logout</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+
+      <div class="admin-tabs">
+        <button class="active" onclick="adminTab('users', this)">Users</button>
+        <button onclick="adminTab('logs', this)">Logs</button>
+        <button onclick="adminTab('media', this)">Media</button>
+        <button onclick="adminTab('settings', this)">Settings</button>
+      </div>
+
+      <!-- Users -->
+      <div class="admin-sub active" id="adminUsers">
+        <div class="badge-row">
+          <div class="badge">Total Users: 128</div>
+          <div class="badge">Total Devices: 94</div>
+        </div>
+        <div class="search-bar">🔍 Email または IDで検索</div>
+
+        <div class="user-card">
+          <div class="uid">#00231 — yuki.t@example.com</div>
+          <div class="umeta">登録日: 2026-03-14</div>
+          <div class="device-line">
+            <div class="dname">リビング スマートプラグ</div>
+            <input type="text" value="2">
+            <div class="rect-btn">更新</div>
+          </div>
+          <div class="level-pw-grid">
+            <div class="level-pw-cell">
+              <div class="lvl">Level.1 — 発行済</div>
+              <div class="btnrow"><div class="rect-btn">再発行</div><div class="rect-btn danger-btn">削除</div></div>
+            </div>
+            <div class="level-pw-cell">
+              <div class="lvl">Level.2 — 未発行</div>
+              <div class="btnrow"><div class="rect-btn">発行</div></div>
+            </div>
+            <div class="level-pw-cell">
+              <div class="lvl">Level.3 — 未発行</div>
+              <div class="btnrow"><div class="rect-btn">発行</div></div>
+            </div>
+            <div class="level-pw-cell">
+              <div class="lvl">Level.4 — 未発行</div>
+              <div class="btnrow"><div class="rect-btn">発行</div></div>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="rect-btn">パスワードリセット</div>
+            <div class="rect-btn danger-btn">ユーザー削除</div>
+          </div>
+        </div>
+
+        <div class="user-card">
+          <div class="uid">#00230 — mika.s@example.com</div>
+          <div class="umeta">登録日: 2026-03-12</div>
+          <div class="device-line">
+            <div class="dname">寝室 スマートプラグ</div>
+            <input type="text" value="1">
+            <div class="rect-btn">更新</div>
+          </div>
+          <div class="level-pw-grid">
+            <div class="level-pw-cell">
+              <div class="lvl">Level.1 — 発行済</div>
+              <div class="btnrow"><div class="rect-btn">再発行</div><div class="rect-btn danger-btn">削除</div></div>
+            </div>
+            <div class="level-pw-cell">
+              <div class="lvl">Level.2 — 発行済</div>
+              <div class="btnrow"><div class="rect-btn">再発行</div><div class="rect-btn danger-btn">削除</div></div>
+            </div>
+            <div class="level-pw-cell">
+              <div class="lvl">Level.3 — 未発行</div>
+              <div class="btnrow"><div class="rect-btn">発行</div></div>
+            </div>
+            <div class="level-pw-cell">
+              <div class="lvl">Level.4 — 未発行</div>
+              <div class="btnrow"><div class="rect-btn">発行</div></div>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="rect-btn">パスワードリセット</div>
+            <div class="rect-btn danger-btn">ユーザー削除</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logs -->
+      <div class="admin-sub" id="adminLogs">
+        <div class="search-bar">🔍 Action / Details / Email / IPで検索</div>
+        <div class="log-row">
+          <div class="laction">Level.1 password reissued</div>
+          <div class="lmeta"><span>yuki.t@example.com</span><span>2026-08-13 00:14</span></div>
+        </div>
+        <div class="log-row">
+          <div class="laction">Device level updated (1→2)</div>
+          <div class="lmeta"><span>mika.s@example.com</span><span>2026-08-12 22:03</span></div>
+        </div>
+        <div class="log-row">
+          <div class="laction">Admin login</div>
+          <div class="lmeta"><span>admin@luxewave.jp</span><span>2026-08-12 19:41</span></div>
+        </div>
+        <div class="log-row">
+          <div class="laction">User password reset</div>
+          <div class="lmeta"><span>ren.k@example.com</span><span>2026-08-11 08:55</span></div>
+        </div>
+      </div>
+
+      <!-- Media -->
+      <div class="admin-sub" id="adminMedia">
+        <div class="media-card">
+          <div class="mtitle">Level.1 Media</div>
+          <div class="file-input">画像/動画を選択（image/*, video/*）</div>
+          <div class="row2">
+            <div class="rect-btn">Upload</div>
+            <div class="rect-btn danger-btn">Delete</div>
+          </div>
+        </div>
+        <div class="media-card">
+          <div class="mtitle">Level.2 Media</div>
+          <div class="file-input">画像/動画を選択（image/*, video/*）</div>
+          <div class="row2">
+            <div class="rect-btn">Upload</div>
+            <div class="rect-btn danger-btn">Delete</div>
+          </div>
+        </div>
+        <div class="media-card">
+          <div class="mtitle">Level.3 Media</div>
+          <div class="file-input">画像/動画を選択（image/*, video/*）</div>
+          <div class="row2">
+            <div class="rect-btn">Upload</div>
+            <div class="rect-btn danger-btn">Delete</div>
+          </div>
+        </div>
+        <div class="media-card">
+          <div class="mtitle">Level.4 Media</div>
+          <div class="file-input">画像/動画を選択（image/*, video/*）</div>
+          <div class="row2">
+            <div class="rect-btn">Upload</div>
+            <div class="rect-btn danger-btn">Delete</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="admin-sub" id="adminSettings">
+        <div class="settings-block">
+          <div class="stitle">Admin Accounts</div>
+          <div class="admin-acc-row"><span class="aemail">admin@luxewave.jp（マスター）</span></div>
+          <div class="admin-acc-row"><span class="aemail">staff01@luxewave.jp</span><div class="rect-btn danger-btn">削除</div></div>
+          <div style="height:10px"></div>
+          <div class="input-wrap"><div class="glass-input" style="font-size:11px;">新規管理者 Email</div></div>
+          <div class="input-wrap"><div class="glass-input" style="font-size:11px;">パスワード（8文字以上）</div></div>
+          <div class="rect-btn">追加</div>
+        </div>
+
+        <div class="settings-block">
+          <div class="stitle">Change Admin Email</div>
+          <div class="input-wrap"><div class="glass-input" style="font-size:11px;">新しいメールアドレス</div></div>
+          <div class="input-wrap"><div class="glass-input" style="font-size:11px;">現在のパスワード（確認）</div></div>
+          <div class="rect-btn">変更する</div>
+        </div>
+
+        <div class="settings-block" style="margin-bottom:0;">
+          <div class="stitle">Change Admin Password</div>
+          <div class="input-wrap"><div class="glass-input" style="font-size:11px;">現在のパスワード</div></div>
+          <div class="input-wrap"><div class="glass-input" style="font-size:11px;">新しいパスワード</div></div>
+          <div class="input-wrap"><div class="glass-input" style="font-size:11px;">新しいパスワード（確認）</div></div>
+          <div class="rect-btn">変更する</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. LEVEL DETAIL -->
+    <div class="page" id="level">
+      <div class="wordmark" style="text-align:left; font-size:20px; letter-spacing:0.2em;">Level.1</div>
+      <div class="divider"></div>
+      <div class="toggle-row">
+        <div class="toggle-label">技術発生</div>
+        <div class="switch" id="techSwitch" onclick="toggleSwitch()"></div>
+        <div class="status-on" id="techStatus">ON</div>
+        <div class="timer">(00:05:50)</div>
+      </div>
+      <div class="media-panel">
+        <div class="lw-icon"></div>
+        <div class="lw-word">LUXE WAVE</div>
+      </div>
+      <div style="height:18px"></div>
+      <div class="pill-btn outline" onclick="show('modulationMenu')">Back to Wave Field Tech</div>
+      <div class="corner-row">
+        <div class="pill-btn small outline">スマホ版に戻る</div>
+        <div class="pill-btn small outline" onclick="show('adminLogin')">Admin</div>
+      </div>
+    </div>
+
+    <!-- 4. DASHBOARD -->
+    <div class="page" id="dashboard">
+      <div class="wordmark" style="font-size:18px;">Dashboard</div>
+      <div class="section-header">Your Devices（スマートプラグ契約者のみ）</div>
+      <div class="device-card">
+        <div><div class="name">リビング スマートプラグ</div><div class="sub">SwitchBot Plug Mini</div></div>
+        <div class="switch" style="width:34px;height:20px;"></div>
+      </div>
+      <div class="device-card">
+        <div><div class="name">寝室 スマートプラグ</div><div class="sub">SwitchBot Plug Mini</div></div>
+        <div class="switch off" style="width:34px;height:20px;"></div>
+      </div>
+
+      <div class="section-header">Add New Device（スマートプラグ契約者のみ）</div>
+      <div class="input-wrap"><div class="glass-input" style="font-size:11px;">デバイス名を入力</div></div>
+      <div class="pill-btn small" style="margin-bottom:8px;">追加する</div>
+
+      <div class="section-header">Level Passwords</div>
+      <div class="password-row"><span class="lvl">Level.1</span><span class="pw">a8f2k9</span><div class="copy-icon"></div></div>
+      <div class="password-row"><span class="lvl">Level.2</span><span class="pw">x91mq2</span><div class="copy-icon"></div></div>
+      <div class="password-row"><span class="lvl">Level.3</span><span class="pw">l0zv77</span><div class="copy-icon"></div></div>
+      <div style="height:10px"></div>
+      <div class="link-text" onclick="show('home')">MENUに戻る</div>
+    </div>
+
+    <!-- 5. REGISTER -->
+    <div class="page" id="register">
+      <div style="flex:1"></div>
+      <div class="wordmark">Create Account</div>
+      <div style="height:30px"></div>
+      <label class="field-label">Email</label>
+      <div class="input-wrap"><div class="glass-input">you@example.com</div></div>
+      <label class="field-label">Password</label>
+      <div class="input-wrap"><div class="glass-input">••••••••<span class="eye-toggle">👁</span></div></div>
+      <label class="field-label">招待コード</label>
+      <div class="input-wrap"><div class="glass-input">INVITE-CODE</div></div>
+      <div class="pill-btn" onclick="show('registerSuccess')">Create Account</div>
+      <div class="link-text" onclick="show('login')">ログイン画面へ戻る</div>
+      <div style="flex:2"></div>
+    </div>
+
+    <!-- 5b. REGISTER SUCCESS -->
+    <div class="page" id="registerSuccess">
+      <div class="success-wrap">
+        <div class="check-circle">✓</div>
+        <div class="success-text">確認メールを送信しました</div>
+        <div class="pill-btn" style="width:200px;" onclick="show('login')">ログイン画面へ</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="switcher">
+  <button class="active" onclick="show('login', this)">Login</button>
+  <button onclick="show('home', this)">Home</button>
+  <button onclick="show('modulationMenu', this)">Wave Field Tech</button>
+  <button onclick="show('level', this)">Level</button>
+  <button onclick="show('smartPlugPage', this)">Smart Plug</button>
+  <button onclick="show('breakerPage', this)">Breaker</button>
+  <button onclick="show('accessoryPage', this)">Accessory</button>
+  <button onclick="show('dashboard', this)">Dashboard</button>
+  <button onclick="show('infoPage', this)">Info</button>
+  <button onclick="show('appleWatchPage', this)">Apple Watch</button>
+  <button onclick="show('register', this)">Register</button>
+  <button onclick="show('adminLogin', this)">Admin Login</button>
+  <button onclick="show('adminDashboard', this)">Admin Dash</button>
+  <button onclick="document.getElementById('banner').classList.toggle('show')">Banner</button>
+</div>
+
+<script>
+function show(id, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.switcher button').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  else {
+    const map = {login:0, home:1, modulationMenu:2, level:3, smartPlugPage:4, breakerPage:5, accessoryPage:6, dashboard:7, infoPage:8, appleWatchPage:9, register:10, adminLogin:11, adminDashboard:12};
+    if(id in map) document.querySelectorAll('.switcher button')[map[id]].classList.add('active');
+  }
+}
+function adminTab(id, btn){
+  document.querySelectorAll('.admin-sub').forEach(s=>s.classList.remove('active'));
+  document.getElementById('admin' + id.charAt(0).toUpperCase() + id.slice(1)).classList.add('active');
+  document.querySelectorAll('.admin-tabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+let techOn = true;
+function toggleSwitch(){
+  techOn = !techOn;
+  const sw = document.getElementById('techSwitch');
+  const st = document.getElementById('techStatus');
+  sw.classList.toggle('off', !techOn);
+  st.textContent = techOn ? 'ON' : 'OFF';
+}
+</script>
+
+</body>
+</html>
