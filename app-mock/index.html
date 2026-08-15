@@ -560,21 +560,7 @@
   .warn-banner .msg{font-size:9px; color:var(--gray-400); font-weight:300; line-height:1.5; flex:1;}
   .warn-banner .close{font-size:14px; color:var(--gray-400); cursor:pointer;}
 
-  /* ---- screen switcher (outside device) ---- */
-  .switcher{
-    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
-    display:flex; gap:6px; background:rgba(20,20,20,0.9);
-    border:1px solid rgba(255,255,255,0.1);
-    border-radius:999px; padding:6px; backdrop-filter:blur(10px);
-    z-index:100; flex-wrap:wrap; max-width:92vw; justify-content:center;
-  }
-  .switcher button{
-    background:transparent; border:none; color:var(--gray-400);
-    font-size:9px; letter-spacing:0.08em; font-weight:300;
-    padding:8px 12px; border-radius:999px; cursor:pointer;
-    font-family:inherit; text-transform:uppercase;
-  }
-  .switcher button.active{background:rgba(255,255,255,0.12); color:#fff;}
+  /* ---- (switcher removed) ---- */
 </style>
 </head>
 <body>
@@ -971,33 +957,10 @@
   </div>
 </div>
 
-<div class="switcher">
-  <button class="active" onclick="show('login', this)">Login</button>
-  <button onclick="show('home', this)">Home</button>
-  <button onclick="show('modulationMenu', this)">Wave Field Tech</button>
-  <button onclick="show('level', this)">Level</button>
-  <button onclick="show('smartPlugPage', this)">Smart Plug</button>
-  <button onclick="show('breakerPage', this)">Breaker</button>
-  <button onclick="show('accessoryPage', this)">Accessory</button>
-  <button onclick="show('dashboard', this)">Dashboard</button>
-  <button onclick="show('infoPage', this)">Info</button>
-  <button onclick="show('appleWatchPage', this)">Apple Watch</button>
-  <button onclick="show('register', this)">Register</button>
-  <button onclick="show('adminLogin', this)">Admin Login</button>
-  <button onclick="show('adminDashboard', this)">Admin Dash</button>
-  <button onclick="document.getElementById('banner').classList.toggle('show')">Banner</button>
-</div>
-
 <script>
 function show(id, btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  document.querySelectorAll('.switcher button').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  else {
-    const map = {login:0, home:1, modulationMenu:2, level:3, smartPlugPage:4, breakerPage:5, accessoryPage:6, dashboard:7, infoPage:8, appleWatchPage:9, register:10, adminLogin:11, adminDashboard:12};
-    if(id in map) document.querySelectorAll('.switcher button')[map[id]].classList.add('active');
-  }
 }
 function adminTab(id, btn){
   document.querySelectorAll('.admin-sub').forEach(s=>s.classList.remove('active'));
