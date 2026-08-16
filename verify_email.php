@@ -46,6 +46,13 @@ if ($token) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>メール認証 - LUXE WAVE</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LUXE WAVE">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
 </head>
 <body class="bg-gradient-to-br from-black via-blue-900 to-black min-h-screen flex items-center justify-center text-white p-6">
 <!-- インアプリブラウザ（LINE/Facebook/Instagram等）検知バナー -->
@@ -108,5 +115,15 @@ if ($token) {
             });
         })();
     </script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('sw.js').catch(function(err) {
+                console.error('SW registration failed:', err);
+            });
+        });
+    }
+</script>
 </body>
 </html>

@@ -37,6 +37,13 @@ $userDevices = $stmt->fetchAll();
         .toggle-dot { top: 0.125rem; left: 0.125rem; width: 1.5rem; height: 1.5rem; background-color: #1f2937; border-radius: 50%; transition: all 0.3s; }
         .toggle-checkbox:checked ~ .toggle-dot { transform: translateX(1.75rem); background-color: #000000; }
     </style>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LUXE WAVE">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
 </head>
 <body class="text-white min-h-screen p-4 pb-20">
 <!-- インアプリブラウザ（LINE/Facebook/Instagram等）検知バナー -->
@@ -275,5 +282,15 @@ $userDevices = $stmt->fetchAll();
             });
         })();
     </script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('sw.js').catch(function(err) {
+                console.error('SW registration failed:', err);
+            });
+        });
+    }
+</script>
 </body>
 </html>

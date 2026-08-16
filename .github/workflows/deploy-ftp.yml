@@ -28,6 +28,6 @@ jobs:
             luxe_wave.sqlite
             *.jpg
             *.jpeg
-            *.png
             *.gif
+            upload_test7.png
             .ftp-deploy-sync-state.json

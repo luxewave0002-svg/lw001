@@ -50,6 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>パスワード再発行 - Mobile</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style> body { font-family: sans-serif; font-weight: 300; background-color: #050505; } </style>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LUXE WAVE">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
 </head>
 <body class="text-white min-h-screen flex flex-col p-6 items-center justify-center">
 <!-- インアプリブラウザ（LINE/Facebook/Instagram等）検知バナー -->
@@ -127,5 +134,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
         })();
     </script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('sw.js').catch(function(err) {
+                console.error('SW registration failed:', err);
+            });
+        });
+    }
+</script>
 </body>
 </html>
