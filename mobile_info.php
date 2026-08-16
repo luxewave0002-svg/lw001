@@ -22,6 +22,11 @@ require_once 'db.php';
     <meta name="apple-mobile-web-app-title" content="LUXE WAVE">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#000000">
+
+<script>
+    // PWA再起動時に直前のページへ戻すため、現在地をlocalStorageに記憶する
+    localStorage.setItem('lw_last_page', location.pathname + location.search);
+</script>
 </head>
 <body class="bg-gradient-to-br from-black via-blue-900 to-black text-white min-h-screen flex flex-col items-center justify-center p-6 relative z-0 overflow-hidden">
 <!-- インアプリブラウザ（LINE/Facebook/Instagram等）検知バナー -->

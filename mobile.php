@@ -49,6 +49,23 @@ requireLogin($pdo, 'mobile_login.php');
     </div>
 </div>
 <script>
+    // PWAをアイコンから新規起動した時だけ、直前に見ていたページへ自動的に戻す
+    // （同じ起動セッション内で意図的にHOMEへ戻ってきた場合は邪魔しない）
+    (function() {
+        var isStandalone = window.navigator.standalone === true ||
+            (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+        var isFreshLaunch = !sessionStorage.getItem('lw_session_active');
+        sessionStorage.setItem('lw_session_active', '1');
+
+        if (isStandalone && isFreshLaunch) {
+            var lastPage = localStorage.getItem('lw_last_page');
+            if (lastPage && lastPage.indexOf('mobile.php') === -1) {
+                window.location.replace(lastPage);
+            }
+        }
+    })();
+</script>
+<script>
     (function() {
         var ua = navigator.userAgent || '';
         var isInApp = /FBAN|FBAV|Instagram|Line\//i.test(ua) || (/; wv\)/i.test(ua) && /Version\//i.test(ua));
