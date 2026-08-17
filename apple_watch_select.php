@@ -101,22 +101,5 @@ if (isset($_GET['logout'])) {
         <a href="apple_watch_home.php" class="btn">TEST PAGE</a>
         <a href="apple_watch_smart_plugs.php" class="btn">SMART PLUG</a>
         <a href="?logout=1" class="link">Logout</a>
-    </div>
-    <!-- バックグラウンド・画面ロック延命用サイレント音声（隠し要素。muted指定はしない＝無音の中身を再生することで背景オーディオ扱いにする） -->
-    <audio id="lw-bg-keepalive" src="bg-keepalive.m4a" loop playsinline preload="auto" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;"></audio>
-    <script>
-        (function() {
-            var a = document.getElementById('lw-bg-keepalive');
-            if (!a) return;
-            a.volume = 1.0;
-            function tryPlay() { a.play().catch(function() {}); }
-            tryPlay();
-            document.addEventListener('click', tryPlay, { once: true });
-            document.addEventListener('touchstart', tryPlay, { once: true });
-            document.addEventListener('visibilitychange', function() {
-                if (document.visibilityState === 'visible') tryPlay();
-            });
-        })();
-    </script>
-</body>
+    </div></body>
 </html>
