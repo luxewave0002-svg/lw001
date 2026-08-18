@@ -38,7 +38,7 @@ $userDevices = $stmt->fetchAll();
         .toggle-checkbox:checked ~ .toggle-dot { transform: translateX(1.75rem); background-color: #000000; }
     </style>
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="LUXE WAVE">
