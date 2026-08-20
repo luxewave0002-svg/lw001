@@ -45,9 +45,9 @@ $myLevelPasswords = $myLevelPwStmt->fetchAll();
     <meta name="theme-color" content="#000000">
 
 <script>
-    // PWAが新規起動（またはiOSによる独自の履歴復元）で開かれた際、
+    // PWAが新規起動（またはiOSによる独自の履歴復元・bfcache復元）で開かれた際、
     // 直前に見ていたページと違う場合は自動的にそちらへ戻す
-    (function() {
+    function lwCheckAndRestorePage() {
         var isStandalone = window.navigator.standalone === true ||
             (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
         var isFreshLaunch = !sessionStorage.getItem('lw_session_active');
@@ -63,13 +63,17 @@ $myLevelPasswords = $myLevelPwStmt->fetchAll();
             }
         }
         localStorage.setItem('lw_last_page', currentPath);
-    })();
+    }
+    lwCheckAndRestorePage();
 
     // 直前に自動復元が発生していた場合、画面上部に一時的な通知を表示する
-    window.addEventListener('DOMContentLoaded', function() {
+    function lwShowRestoredToastIfNeeded() {
         if (localStorage.getItem('lw_just_restored') === '1') {
             localStorage.removeItem('lw_just_restored');
+            var existing = document.getElementById('lw-restored-toast');
+            if (existing) existing.remove();
             var toast = document.createElement('div');
+            toast.id = 'lw-restored-toast';
             toast.textContent = '前回の続きのページに自動で戻しました';
             toast.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);' +
                 'background:rgba(0,0,0,0.85);color:#fff;font-size:12px;letter-spacing:0.05em;' +
@@ -80,6 +84,16 @@ $myLevelPasswords = $myLevelPwStmt->fetchAll();
                 toast.style.opacity = '0';
                 setTimeout(function() { toast.remove(); }, 500);
             }, 3000);
+        }
+    }
+    window.addEventListener('DOMContentLoaded', lwShowRestoredToastIfNeeded);
+
+    // bfcache（iOSがJSを再実行せずページを丸ごと復元する仕組み）からの復帰を検知し、
+    // 通常のスクリプト実行が起きないケースにも対応する
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            lwCheckAndRestorePage();
+            lwShowRestoredToastIfNeeded();
         }
     });
 </script>
