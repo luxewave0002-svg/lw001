@@ -263,6 +263,24 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
         }
     }
 
+    // ユーザーのニックネーム更新処理（管理者が任意で設定する内部メモ用の呼び名）
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_nickname') {
+        $nicknameUserId = $_POST['user_id'] ?? '';
+        $newNickname = trim($_POST['nickname'] ?? '');
+
+        if ($nicknameUserId) {
+            try {
+                $stmt = $pdo->prepare("UPDATE users SET nickname = ? WHERE id = ?");
+                $stmt->execute([$newNickname !== '' ? $newNickname : null, $nicknameUserId]);
+                $message = "ユーザー (ID: {$nicknameUserId}) のニックネームを更新しました。";
+                $message_class = 'success';
+            } catch (Exception $e) {
+                $message = "ニックネームの更新中にエラーが発生しました。";
+                $message_class = 'error';
+            }
+        }
+    }
+
     // ユーザー削除処理
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_user') {
         $deleteUserId = $_POST['delete_user_id'] ?? '';
@@ -460,10 +478,10 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
 
     // 全ユーザーを取得
     if ($searchQuery !== '') {
-        $stmt = $pdo->prepare("SELECT id, email FROM users WHERE email LIKE ? OR id = ? ORDER BY id ASC");
+        $stmt = $pdo->prepare("SELECT id, email, nickname FROM users WHERE email LIKE ? OR id = ? ORDER BY id ASC");
         $stmt->execute(['%' . $searchQuery . '%', $searchQuery]);
     } else {
-        $stmt = $pdo->query("SELECT id, email FROM users ORDER BY id ASC");
+        $stmt = $pdo->query("SELECT id, email, nickname FROM users ORDER BY id ASC");
     }
     $users = $stmt->fetchAll();
 
@@ -711,6 +729,7 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
                         <tr class="bg-white/10 border-b border-white/10 text-sm tracking-wider">
                             <th class="p-4 font-medium text-gray-300">ID</th>
                             <th class="p-4 font-medium text-gray-300">Email</th>
+                            <th class="p-4 font-medium text-gray-300">Nickname</th>
                             <th class="p-4 font-medium text-gray-300">Registered Devices</th>
                             <th class="p-4 font-medium text-gray-300">Last Login</th>
                             <th class="p-4 font-medium text-gray-300 text-right">Actions</th>
@@ -721,6 +740,15 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
                             <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
                                 <td class="p-4 text-gray-400">#<?php echo htmlspecialchars($user['id']); ?></td>
                                 <td class="p-4 text-gray-200"><?php echo htmlspecialchars($user['email']); ?></td>
+                                <td class="p-4">
+                                    <form method="POST" class="flex items-center gap-1.5">
+                                        <input type="hidden" name="action" value="update_nickname">
+                                        <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($user['id']); ?>">
+                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                                        <input type="text" name="nickname" value="<?php echo htmlspecialchars($user['nickname'] ?? ''); ?>" placeholder="（任意）" class="bg-white/5 border border-white/20 rounded px-2 py-1 text-xs text-white w-28 focus:outline-none focus:border-white/50">
+                                        <button type="submit" class="text-xs text-gray-400 hover:text-white border border-white/20 rounded px-2 py-1 transition-colors whitespace-nowrap">保存</button>
+                                    </form>
+                                </td>
                                 <td class="p-4 text-gray-400"><?php echo htmlspecialchars($user['device_count']); ?> Devices</td>
                                 <td class="p-4 text-gray-500 text-xs whitespace-nowrap"><?php echo htmlspecialchars($user['last_login']); ?></td>
                                 <td class="p-4 text-right whitespace-nowrap">

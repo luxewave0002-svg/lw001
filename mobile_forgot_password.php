@@ -25,17 +25,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $updateStmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
             if ($updateStmt->execute([$newHash, $user['id']])) {
-                $message = 'パスワードをリセットしました。';
-                $message_class = 'success';
+                sendTempPasswordEmail($email, $new_password);
                 writeLog($pdo, $user['id'], 'password_reset', 'ユーザーがパスワードを再発行しました(Mobile)。');
-            } else {
-                $message = 'パスワードのリセットに失敗しました。';
-                $message_class = 'error';
             }
-        } else {
-            $message = '入力されたメールアドレスは登録されていません。';
-            $message_class = 'error';
         }
+        // 登録の有無に関わらず同一のメッセージを表示する（メールアドレスの存在確認に悪用されないようにするため）
+        $new_password = '';
+        $message = 'ご入力のメールアドレスが登録されている場合、仮パスワードをお送りしました。メールをご確認ください。';
+        $message_class = 'success';
     } else {
         $message = 'メールアドレスを入力してください。';
         $message_class = 'error';

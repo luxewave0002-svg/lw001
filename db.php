@@ -127,6 +127,15 @@ try {
         $pdo->exec("ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0");
     }
 
+    // 管理者が任意で設定できるニックネーム用カラム
+    $hasNickname = false;
+    foreach ($userColumns as $col) {
+        if ($col['name'] === 'nickname') $hasNickname = true;
+    }
+    if (!$hasNickname) {
+        $pdo->exec("ALTER TABLE users ADD COLUMN nickname TEXT");
+    }
+
     // デバイステーブルの作成（ユーザーと紐付けます）
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS devices (
@@ -439,6 +448,22 @@ function sendVerificationEmail($email, $token) {
           . "（このリンクの有効期限は24時間です）\n\n"
           . $verifyUrl . "\n\n"
           . "心当たりがない場合は、このメールを破棄してください。\n\n"
+          . "LUXE WAVE";
+
+    $headers = "From: LUXE WAVE <admin@luxewave.jp>\r\n";
+    $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+
+    return @mail($email, mb_encode_mimeheader($subject, 'UTF-8'), $body, $headers);
+}
+
+// 仮パスワード再発行メールを送信する
+function sendTempPasswordEmail($email, $tempPassword) {
+    $subject = '【LUXE WAVE】パスワード再発行のお知らせ';
+    $body = "パスワードの再発行リクエストを受け付けました。\n\n"
+          . "以下が新しい仮パスワードです。ログイン後、お手数ですが速やかにパスワードの変更をお願いいたします。\n\n"
+          . "仮パスワード: " . $tempPassword . "\n\n"
+          . "心当たりがない場合は、このメールを破棄してください。第三者にパスワードが渡った可能性がある場合は、"
+          . "ログイン後すぐにパスワードを変更してください。\n\n"
           . "LUXE WAVE";
 
     $headers = "From: LUXE WAVE <admin@luxewave.jp>\r\n";
