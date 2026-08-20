@@ -46,8 +46,43 @@ $userDevices = $stmt->fetchAll();
     <meta name="theme-color" content="#000000">
 
 <script>
-    // PWA再起動時に直前のページへ戻すため、現在地をlocalStorageに記憶する
-    localStorage.setItem('lw_last_page', location.pathname + location.search);
+    // PWAが新規起動（またはiOSによる独自の履歴復元）で開かれた際、
+    // 直前に見ていたページと違う場合は自動的にそちらへ戻す
+    (function() {
+        var isStandalone = window.navigator.standalone === true ||
+            (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+        var isFreshLaunch = !sessionStorage.getItem('lw_session_active');
+        sessionStorage.setItem('lw_session_active', '1');
+        var currentPath = location.pathname + location.search;
+
+        if (isStandalone && isFreshLaunch) {
+            var lastPage = localStorage.getItem('lw_last_page');
+            if (lastPage && lastPage !== currentPath) {
+                localStorage.setItem('lw_just_restored', '1');
+                window.location.replace(lastPage);
+                return;
+            }
+        }
+        localStorage.setItem('lw_last_page', currentPath);
+    })();
+
+    // 直前に自動復元が発生していた場合、画面上部に一時的な通知を表示する
+    window.addEventListener('DOMContentLoaded', function() {
+        if (localStorage.getItem('lw_just_restored') === '1') {
+            localStorage.removeItem('lw_just_restored');
+            var toast = document.createElement('div');
+            toast.textContent = '前回の続きのページに自動で戻しました';
+            toast.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);' +
+                'background:rgba(0,0,0,0.85);color:#fff;font-size:12px;letter-spacing:0.05em;' +
+                'padding:10px 18px;border-radius:999px;border:1px solid rgba(255,255,255,0.2);' +
+                'z-index:99999;backdrop-filter:blur(6px);transition:opacity 0.5s;';
+            document.body.appendChild(toast);
+            setTimeout(function() {
+                toast.style.opacity = '0';
+                setTimeout(function() { toast.remove(); }, 500);
+            }, 3000);
+        }
+    });
 </script>
 </head>
 <body class="text-white min-h-screen p-4 pb-20">
