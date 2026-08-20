@@ -233,6 +233,11 @@ $imagePath = getImagePath((string)$level);
         <?php endif; ?>
 
         <a href="mobile.php" class="text-xs text-gray-500 underline underline-offset-4 tracking-widest mt-6 inline-block">TOPに戻る</a>
+
+        <div class="mt-8 pt-6 border-t border-white/10 text-left">
+            <p class="text-xs text-gray-500 tracking-widest mb-3">HISTORY</p>
+            <div id="on-history-list" class="flex flex-col gap-1.5 text-xs text-gray-400"></div>
+        </div>
     </div>
 
     <!-- 下部の余白スペーサー：スクロール可能な領域を確保し、Safariの意図しないpull-to-refreshを防ぐ -->
@@ -312,6 +317,8 @@ $imagePath = getImagePath((string)$level);
             const onTimerEl = document.getElementById('on-timer');
             const toggleCheckbox = document.getElementById('toggleLevel');
             let timerInterval = null;
+            const historyStorageKey = 'lw_level_history_' + level;
+            const liveCheckpointKey = 'lw_level_live_' + level;
 
             function formatElapsed(ms) {
                 const totalSeconds = Math.floor(ms / 1000);
@@ -321,10 +328,48 @@ $imagePath = getImagePath((string)$level);
                 return h + ':' + m + ':' + s;
             }
 
+            function getHistory() {
+                try { return JSON.parse(localStorage.getItem(historyStorageKey) || '[]'); }
+                catch (e) { return []; }
+            }
+
+            function addHistoryEntry(startedAt, endedAt, cutoff) {
+                const history = getHistory();
+                history.unshift({
+                    startedAt: startedAt,
+                    durationMs: endedAt - startedAt,
+                    cutoff: !!cutoff
+                });
+                localStorage.setItem(historyStorageKey, JSON.stringify(history.slice(0, 15)));
+                renderHistory();
+            }
+
+            function renderHistory() {
+                const listEl = document.getElementById('on-history-list');
+                if (!listEl) return;
+                const history = getHistory();
+                if (history.length === 0) {
+                    listEl.innerHTML = '<span class="text-gray-600">記録はまだありません</span>';
+                    return;
+                }
+                listEl.innerHTML = history.map(function(entry) {
+                    const d = new Date(entry.startedAt);
+                    const dateStr = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+                    const durStr = formatElapsed(entry.durationMs);
+                    const badge = entry.cutoff
+                        ? '<span class="text-red-400">強制終了</span>'
+                        : '<span class="text-gray-500">手動OFF</span>';
+                    return '<div class="flex items-center justify-between gap-2 bg-black/20 px-2.5 py-1.5 rounded">' +
+                        '<span>' + dateStr + '</span><span class="font-mono">' + durStr + '</span>' + badge + '</div>';
+                }).join('');
+            }
+
             function tick() {
                 const since = parseInt(sessionStorage.getItem(timerStorageKey) || '0', 10);
                 if (!since) return;
                 onTimerEl.textContent = '(' + formatElapsed(Date.now() - since) + ')';
+                // 強制終了時に経過時間を推定できるよう、定期的にチェックポイントを保存
+                localStorage.setItem(liveCheckpointKey, JSON.stringify({ start: since, lastSeen: Date.now() }));
             }
 
             window.startOnTimer = function() {
@@ -338,11 +383,32 @@ $imagePath = getImagePath((string)$level);
             };
 
             window.stopOnTimer = function() {
+                const since = parseInt(sessionStorage.getItem(timerStorageKey) || '0', 10);
+                if (since) {
+                    addHistoryEntry(since, Date.now(), false);
+                }
                 sessionStorage.removeItem(timerStorageKey);
+                localStorage.removeItem(liveCheckpointKey);
                 onTimerEl.classList.add('hidden');
                 if (timerInterval) clearInterval(timerInterval);
                 timerInterval = null;
             };
+
+            // 前回、手動OFFを経ずにセッションが失われていた場合（バックグラウンドでの強制終了等）、
+            // 最後に記録できていたチェックポイントを元に「強制終了」として履歴に残す
+            if (!sessionStorage.getItem(timerStorageKey)) {
+                const liveRaw = localStorage.getItem(liveCheckpointKey);
+                if (liveRaw) {
+                    try {
+                        const live = JSON.parse(liveRaw);
+                        if (live && live.start && live.lastSeen) {
+                            addHistoryEntry(live.start, live.lastSeen, true);
+                        }
+                    } catch (e) {}
+                    localStorage.removeItem(liveCheckpointKey);
+                }
+            }
+            renderHistory();
 
             // ページを開き直した時、ON状態が保存されていればトグルとタイマーを復元する（同一タブ内でのみ）
             // 保存が無ければ、ブラウザ側の自動復元によるズレを防ぐため明示的にOFFへ揃える

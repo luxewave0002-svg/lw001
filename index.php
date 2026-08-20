@@ -337,6 +337,11 @@ foreach ([1, 2, 3, 4] as $lvl) {
                     <div class="mt-10 text-center">
                         <button onclick="showPage('home')" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 focus:outline-none">BACK TO HOME</button>
                     </div>
+
+                    <div class="mt-10 pt-6 border-t border-white/10 text-left max-w-xs mx-auto">
+                        <p class="text-xs text-gray-500 tracking-widest mb-3">HISTORY</p>
+                        <div id="on-history-list<?php echo $i; ?>" class="flex flex-col gap-1.5 text-xs text-gray-400"></div>
+                    </div>
                 <?php endif; ?>
             </section>
         <?php endforeach; ?>
@@ -523,12 +528,46 @@ setInterval(keepAlive, 5000);
                 return h + ':' + m + ':' + s;
             }
 
+            function getHistory(level) {
+                try { return JSON.parse(localStorage.getItem('lw_level_history_' + level) || '[]'); }
+                catch (e) { return []; }
+            }
+
+            function addHistoryEntry(level, startedAt, endedAt, cutoff) {
+                const key = 'lw_level_history_' + level;
+                const history = getHistory(level);
+                history.unshift({ startedAt: startedAt, durationMs: endedAt - startedAt, cutoff: !!cutoff });
+                localStorage.setItem(key, JSON.stringify(history.slice(0, 15)));
+                renderHistory(level);
+            }
+
+            function renderHistory(level) {
+                const listEl = document.getElementById('on-history-list' + level);
+                if (!listEl) return;
+                const history = getHistory(level);
+                if (history.length === 0) {
+                    listEl.innerHTML = '<span class="text-gray-600">記録はまだありません</span>';
+                    return;
+                }
+                listEl.innerHTML = history.map(function(entry) {
+                    const d = new Date(entry.startedAt);
+                    const dateStr = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+                    const durStr = formatElapsed(entry.durationMs);
+                    const badge = entry.cutoff
+                        ? '<span class="text-red-400">強制終了</span>'
+                        : '<span class="text-gray-500">手動OFF</span>';
+                    return '<div class="flex items-center justify-between gap-2 bg-black/20 px-2.5 py-1.5 rounded">' +
+                        '<span>' + dateStr + '</span><span class="font-mono">' + durStr + '</span>' + badge + '</div>';
+                }).join('');
+            }
+
             function tick(level) {
                 const storageKey = 'lw_level_on_since_' + level;
                 const onTimerEl = document.getElementById('on-timer' + level);
                 const since = parseInt(sessionStorage.getItem(storageKey) || '0', 10);
                 if (!since || !onTimerEl) return;
                 onTimerEl.textContent = '(' + formatElapsed(Date.now() - since) + ')';
+                localStorage.setItem('lw_level_live_' + level, JSON.stringify({ start: since, lastSeen: Date.now() }));
             }
 
             window.startOnTimer = function(level) {
@@ -547,7 +586,12 @@ setInterval(keepAlive, 5000);
             window.stopOnTimer = function(level) {
                 const storageKey = 'lw_level_on_since_' + level;
                 const onTimerEl = document.getElementById('on-timer' + level);
+                const since = parseInt(sessionStorage.getItem(storageKey) || '0', 10);
+                if (since) {
+                    addHistoryEntry(level, since, Date.now(), false);
+                }
                 sessionStorage.removeItem(storageKey);
+                localStorage.removeItem('lw_level_live_' + level);
                 if (onTimerEl) onTimerEl.classList.add('hidden');
                 if (onTimerIntervals[level]) clearInterval(onTimerIntervals[level]);
                 onTimerIntervals[level] = null;
@@ -559,6 +603,22 @@ setInterval(keepAlive, 5000);
                 [1, 2, 3, 4].forEach(function(level) {
                     const storageKey = 'lw_level_on_since_' + level;
                     const checkbox = document.getElementById('toggleTest' + level);
+
+                    // 前回、手動OFFを経ずにセッションが失われていた場合は「強制終了」として履歴に残す
+                    if (!sessionStorage.getItem(storageKey)) {
+                        const liveRaw = localStorage.getItem('lw_level_live_' + level);
+                        if (liveRaw) {
+                            try {
+                                const live = JSON.parse(liveRaw);
+                                if (live && live.start && live.lastSeen) {
+                                    addHistoryEntry(level, live.start, live.lastSeen, true);
+                                }
+                            } catch (e) {}
+                            localStorage.removeItem('lw_level_live_' + level);
+                        }
+                    }
+                    renderHistory(level);
+
                     if (!checkbox) return;
                     if (sessionStorage.getItem(storageKey)) {
                         checkbox.checked = true;
