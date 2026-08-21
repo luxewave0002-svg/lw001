@@ -38,8 +38,11 @@ if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
         
         $email = $_POST['admin_email'] ?? '';
         $password = $_POST['admin_password'] ?? '';
-        
-        if ($email === $currentAdminEmail) {
+        $adminLoginIdentifier = 'admin:' . strtolower($email);
+
+        if (tooManyFailedAttempts($pdo, $adminLoginIdentifier)) {
+            $error = 'ログイン試行回数が多いため、しばらく時間をおいてから再度お試しください。';
+        } elseif ($email === $currentAdminEmail) {
             // マスター管理者（settingsテーブルのアドレス）
             $isPasswordCorrect = false;
             if ($currentAdminPasswordHash) {
@@ -56,11 +59,13 @@ if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
             }
 
             if ($isPasswordCorrect) {
+                clearFailedAttempts($pdo, $adminLoginIdentifier);
                 $_SESSION['is_admin'] = true;
                 $_SESSION['is_master_admin'] = true;
                 $_SESSION['admin_email'] = $currentAdminEmail;
                 $admin_login_success = true;
             } else {
+                recordFailedAttempt($pdo, $adminLoginIdentifier);
                 $error = 'パスワードが間違っています。';
             }
         } else {
@@ -70,13 +75,16 @@ if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
             $subAdmin = $stmt->fetch();
 
             if ($subAdmin && password_verify($password, $subAdmin['password'])) {
+                clearFailedAttempts($pdo, $adminLoginIdentifier);
                 $_SESSION['is_admin'] = true;
                 $_SESSION['is_master_admin'] = false;
                 $_SESSION['admin_email'] = $subAdmin['email'];
                 $admin_login_success = true;
             } elseif ($subAdmin) {
+                recordFailedAttempt($pdo, $adminLoginIdentifier);
                 $error = 'パスワードが間違っています。';
             } else {
+                recordFailedAttempt($pdo, $adminLoginIdentifier);
                 $error = '許可されていない管理者アドレスです。';
             }
         }

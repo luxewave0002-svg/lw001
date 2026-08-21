@@ -302,6 +302,16 @@ try {
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     ");
+
+    // ログイン失敗回数の記録テーブル（ブルートフォース対策）
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS login_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            identifier TEXT NOT NULL,
+            created_at DATETIME NOT NULL
+        )
+    ");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_login_attempts_identifier ON login_attempts(identifier, created_at)");
 } catch (PDOException $e) {
     die("DB Connection failed: " . $e->getMessage());
 }
@@ -395,6 +405,24 @@ function logoutUser($pdo) {
     }
 
     session_destroy();
+}
+
+// ブルートフォース対策：直近の失敗回数が上限を超えていないか確認する
+function tooManyFailedAttempts($pdo, $identifier, $maxAttempts = 5, $windowMinutes = 15) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM login_attempts WHERE identifier = ? AND created_at > datetime('now', ?)");
+    $stmt->execute([$identifier, '-' . (int)$windowMinutes . ' minutes']);
+    return (int)$stmt->fetchColumn() >= $maxAttempts;
+}
+
+// ログイン失敗を記録する
+function recordFailedAttempt($pdo, $identifier) {
+    $pdo->prepare("INSERT INTO login_attempts (identifier, created_at) VALUES (?, datetime('now'))")
+        ->execute([$identifier]);
+}
+
+// ログイン成功時に、それまでの失敗記録をクリアする
+function clearFailedAttempts($pdo, $identifier) {
+    $pdo->prepare("DELETE FROM login_attempts WHERE identifier = ?")->execute([$identifier]);
 }
 
 // 新しい端末でのログインを「最新」として記録し、他の端末を次回アクセス時に強制ログアウトさせる

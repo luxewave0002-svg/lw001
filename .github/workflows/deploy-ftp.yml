@@ -26,6 +26,7 @@ jobs:
             **/.github/**
             sessions/**
             luxe_wave.sqlite
+            config.php
             *.jpg
             *.jpeg
             *.gif

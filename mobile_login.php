@@ -20,23 +20,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
 
     if ($email && $password) {
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-        $stmt->execute([$email]);
-        $user = $stmt->fetch();
+        $loginIdentifier = 'user:' . strtolower($email);
 
-        if ($user && password_verify($password, $user['password'])) {
-            if ((int)$user['email_verified'] !== 1) {
-                $error = 'メールアドレスの確認が完了していません。ご登録時に届いたメール内のリンクをクリックしてください。';
-            } else {
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['email'] = $user['email'];
-                registerNewLoginDevice($pdo, $user['id']);
-                issueRememberCookie($pdo, $user['id']);
-                writeLog($pdo, $user['id'], 'login', 'ユーザーがログインしました (Mobile)。');
-                $login_success = true;
-            }
+        if (tooManyFailedAttempts($pdo, $loginIdentifier)) {
+            $error = 'ログイン試行回数が多いため、しばらく時間をおいてから再度お試しください。';
         } else {
-            $error = 'メールアドレスまたはパスワードが間違っています。';
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
+
+            if ($user && password_verify($password, $user['password'])) {
+                if ((int)$user['email_verified'] !== 1) {
+                    $error = 'メールアドレスの確認が完了していません。ご登録時に届いたメール内のリンクをクリックしてください。';
+                } else {
+                    clearFailedAttempts($pdo, $loginIdentifier);
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['email'] = $user['email'];
+                    registerNewLoginDevice($pdo, $user['id']);
+                    issueRememberCookie($pdo, $user['id']);
+                    writeLog($pdo, $user['id'], 'login', 'ユーザーがログインしました (Mobile)。');
+                    $login_success = true;
+                }
+            } else {
+                recordFailedAttempt($pdo, $loginIdentifier);
+                $error = 'メールアドレスまたはパスワードが間違っています。';
+            }
         }
     } else {
         $error = '入力してください。';

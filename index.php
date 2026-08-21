@@ -561,6 +561,24 @@ setInterval(keepAlive, 5000);
                 }).join('');
             }
 
+            // 強制終了を検知した際に、画面上部にポップアップ通知を表示する
+            function showCutoffToast(level, durationMs) {
+                var existing = document.getElementById('lw-cutoff-toast');
+                if (existing) existing.remove();
+                var toast = document.createElement('div');
+                toast.id = 'lw-cutoff-toast';
+                toast.textContent = '前回 Level.' + level + ' の「技術発生」が強制終了しました（経過時間: ' + formatElapsed(durationMs) + '）';
+                toast.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);' +
+                    'background:rgba(120,20,20,0.9);color:#fff;font-size:12px;letter-spacing:0.03em;' +
+                    'padding:10px 18px;border-radius:999px;border:1px solid rgba(255,120,120,0.4);' +
+                    'z-index:99999;backdrop-filter:blur(6px);transition:opacity 0.5s;white-space:nowrap;';
+                document.body.appendChild(toast);
+                setTimeout(function() {
+                    toast.style.opacity = '0';
+                    setTimeout(function() { toast.remove(); }, 500);
+                }, 4000);
+            }
+
             function tick(level) {
                 const storageKey = 'lw_level_on_since_' + level;
                 const onTimerEl = document.getElementById('on-timer' + level);
@@ -612,6 +630,7 @@ setInterval(keepAlive, 5000);
                                 const live = JSON.parse(liveRaw);
                                 if (live && live.start && live.lastSeen) {
                                     addHistoryEntry(level, live.start, live.lastSeen, true);
+                                    showCutoffToast(level, live.lastSeen - live.start);
                                 }
                             } catch (e) {}
                             localStorage.removeItem('lw_level_live_' + level);

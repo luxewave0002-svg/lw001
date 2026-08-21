@@ -394,8 +394,26 @@ $imagePath = getImagePath((string)$level);
                 timerInterval = null;
             };
 
+            // 強制終了を検知した際に、画面上部にポップアップ通知を表示する
+            function showCutoffToast(durationMs) {
+                var existing = document.getElementById('lw-cutoff-toast');
+                if (existing) existing.remove();
+                var toast = document.createElement('div');
+                toast.id = 'lw-cutoff-toast';
+                toast.textContent = '前回「技術発生」が強制終了しました（経過時間: ' + formatElapsed(durationMs) + '）';
+                toast.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);' +
+                    'background:rgba(120,20,20,0.9);color:#fff;font-size:12px;letter-spacing:0.03em;' +
+                    'padding:10px 18px;border-radius:999px;border:1px solid rgba(255,120,120,0.4);' +
+                    'z-index:99999;backdrop-filter:blur(6px);transition:opacity 0.5s;white-space:nowrap;';
+                document.body.appendChild(toast);
+                setTimeout(function() {
+                    toast.style.opacity = '0';
+                    setTimeout(function() { toast.remove(); }, 500);
+                }, 4000);
+            }
+
             // 前回、手動OFFを経ずにセッションが失われていた場合（バックグラウンドでの強制終了等）、
-            // 最後に記録できていたチェックポイントを元に「強制終了」として履歴に残す
+            // 最後に記録できていたチェックポイントを元に「強制終了」として履歴に残し、ポップアップで知らせる
             if (!sessionStorage.getItem(timerStorageKey)) {
                 const liveRaw = localStorage.getItem(liveCheckpointKey);
                 if (liveRaw) {
@@ -403,6 +421,9 @@ $imagePath = getImagePath((string)$level);
                         const live = JSON.parse(liveRaw);
                         if (live && live.start && live.lastSeen) {
                             addHistoryEntry(live.start, live.lastSeen, true);
+                            window.addEventListener('DOMContentLoaded', function() {
+                                showCutoffToast(live.lastSeen - live.start);
+                            });
                         }
                     } catch (e) {}
                     localStorage.removeItem(liveCheckpointKey);
