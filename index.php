@@ -648,6 +648,22 @@ setInterval(keepAlive, 5000);
                     }
                 });
             });
+
+            // フォアグラウンドに戻った瞬間、表示更新タイマー(setInterval)がiOSに止められたままの場合があるため強制的に再起動する
+            function resumeAllTicksIfNeeded() {
+                [1, 2, 3, 4].forEach(function(level) {
+                    if (sessionStorage.getItem('lw_level_on_since_' + level)) {
+                        tick(level);
+                        if (onTimerIntervals[level]) clearInterval(onTimerIntervals[level]);
+                        onTimerIntervals[level] = setInterval(() => tick(level), 1000);
+                    }
+                });
+            }
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible') resumeAllTicksIfNeeded();
+            });
+            window.addEventListener('pageshow', resumeAllTicksIfNeeded);
+            window.addEventListener('focus', resumeAllTicksIfNeeded);
         })();
 
         // ページ読み込み時の処理 (PHPからの変数を受け取る)

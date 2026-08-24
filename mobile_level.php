@@ -440,6 +440,20 @@ $imagePath = getImagePath((string)$level);
                 toggleCheckbox.checked = false;
                 toggleImage('level-media', 'status-level', false);
             }
+
+            // フォアグラウンドに戻った瞬間、表示更新タイマー(setInterval)がiOSに止められたままの場合があるため強制的に再起動する
+            function resumeTickIfNeeded() {
+                if (sessionStorage.getItem(timerStorageKey)) {
+                    tick();
+                    if (timerInterval) clearInterval(timerInterval);
+                    timerInterval = setInterval(tick, 1000);
+                }
+            }
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible') resumeTickIfNeeded();
+            });
+            window.addEventListener('pageshow', resumeTickIfNeeded);
+            window.addEventListener('focus', resumeTickIfNeeded);
         })();
 
         const canvas = document.getElementById('waveCanvas');
