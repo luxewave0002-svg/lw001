@@ -46,6 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verif
 // このLevelを閲覧できるか（DBのパスワードと毎回照合するので、削除されれば再ロックされる）
 $isLocked = !isLevelUnlocked($pdo, $_SESSION['user_id'] ?? null, $level);
 
+// 「技術発生」の現在の状態と履歴をサーバー側から取得する
+$activationStartedAt = null;
+$activationHistory = [];
+if (!$isLocked && isset($_SESSION['user_id'])) {
+    $activationStartedAt = getLevelActivation($pdo, $_SESSION['user_id'], $level);
+    $activationHistory = getLevelActivationHistory($pdo, $_SESSION['user_id'], $level);
+}
+
 $imagePath = getImagePath((string)$level);
 ?>
 <!DOCTYPE html>
@@ -213,15 +221,15 @@ $imagePath = getImagePath((string)$level);
             <div class="flex items-center justify-center mb-8 gap-4">
                 <span class="font-light text-gray-200 tracking-wider text-sm">技術発生</span>
                 <div class="relative inline-block w-12 h-6 align-middle select-none">
-                    <input type="checkbox" name="toggleLevel" id="toggleLevel" autocomplete="off" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-transparent border-2 appearance-none cursor-pointer outline-none" onchange="toggleImage('level-media', 'status-level', this.checked)"/>
+                    <input type="checkbox" name="toggleLevel" id="toggleLevel" autocomplete="off" <?php echo $activationStartedAt ? 'checked' : ''; ?> class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-transparent border-2 appearance-none cursor-pointer outline-none" onchange="handleToggleChange(this.checked)"/>
                     <label for="toggleLevel" class="toggle-label block overflow-hidden h-6 rounded-full cursor-pointer border border-white/30"></label>
                     <div class="toggle-dot absolute block w-5 h-5 rounded-full shadow inset-y-0 left-0 mt-0.5 ml-0.5 pointer-events-none"></div>
                 </div>
-                <span id="status-level" class="font-semibold tracking-widest text-gray-400 text-sm">OFF</span>
-                <span id="on-timer" class="hidden text-xs text-gray-400 tracking-wider tabular-nums">(00:00:00)</span>
+                <span id="status-level" class="font-semibold tracking-widest <?php echo $activationStartedAt ? 'text-white' : 'text-gray-400'; ?> text-sm"><?php echo $activationStartedAt ? 'ON' : 'OFF'; ?></span>
+                <span id="on-timer" class="<?php echo $activationStartedAt ? '' : 'hidden'; ?> text-xs text-gray-400 tracking-wider tabular-nums">(00:00:00)</span>
             </div>
 
-            <div id="level-media" class="hidden transition-all duration-500 opacity-0 mb-8">
+            <div id="level-media" class="<?php echo $activationStartedAt ? '' : 'hidden'; ?> transition-all duration-500 <?php echo $activationStartedAt ? 'opacity-100' : 'opacity-0'; ?> mb-8">
                 <div class="overflow-hidden rounded shadow-2xl bg-black flex justify-center items-center py-6">
                     <?php if (isVideoFile($imagePath)): ?>
                         <video src="<?php echo htmlspecialchars($imagePath); ?>" controls class="w-full max-w-xs h-auto opacity-90 hover:opacity-100 transition-opacity duration-500"></video>
@@ -236,7 +244,30 @@ $imagePath = getImagePath((string)$level);
 
         <div class="mt-8 pt-6 border-t border-white/10 text-left">
             <p class="text-xs text-gray-500 tracking-widest mb-3">HISTORY</p>
-            <div id="on-history-list" class="flex flex-col gap-1.5 text-xs text-gray-400"></div>
+            <div id="on-history-list" class="flex flex-col gap-1.5 text-xs text-gray-400">
+                <?php if (empty($activationHistory)): ?>
+                    <span class="text-gray-600">記録はまだありません</span>
+                <?php else: ?>
+                    <?php foreach ($activationHistory as $entry):
+                        $startTs = strtotime($entry['started_at']);
+                        $endTs = strtotime($entry['ended_at']);
+                        $durationSec = max(0, $endTs - $startTs);
+                        $durStr = sprintf('%02d:%02d:%02d', intdiv($durationSec, 3600), intdiv($durationSec % 3600, 60), $durationSec % 60);
+                        $dateStr = date('n/j H:i', $startTs);
+                        $isTimeout = $entry['ended_reason'] === 'timeout';
+                    ?>
+                        <div class="flex items-center justify-between gap-2 bg-black/20 px-2.5 py-1.5 rounded">
+                            <span><?php echo htmlspecialchars($dateStr); ?></span>
+                            <span class="font-mono"><?php echo htmlspecialchars($durStr); ?></span>
+                            <?php if ($isTimeout): ?>
+                                <span class="text-yellow-400">自動終了(24h)</span>
+                            <?php else: ?>
+                                <span class="text-gray-500">手動OFF</span>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 
@@ -300,25 +331,23 @@ $imagePath = getImagePath((string)$level);
                 setTimeout(() => { targetElement.classList.add('opacity-100'); }, 10);
                 statusElement.textContent = 'ON';
                 statusElement.classList.replace('text-gray-400', 'text-white');
-                startOnTimer();
             } else {
                 targetElement.classList.remove('opacity-100');
                 setTimeout(() => { targetElement.classList.add('hidden'); }, 300);
                 statusElement.textContent = 'OFF';
                 statusElement.classList.replace('text-white', 'text-gray-400');
-                stopOnTimer();
             }
         }
 
-        // 「技術発生」ONになってからの経過時間タイマー（Level番号ごとにsessionStorageへ保存。タブ内の再読込では継続、ブラウザを完全終了すると自動リセット）
+        // 「技術発生」の状態はサーバー側(DB)で管理する。クライアントはstarted_atを元に表示するだけで、
+        // バックグラウンドで何時間放置されようが、開いた瞬間に正しい経過時間を計算できる。
         (function() {
             const level = <?php echo (int)$level; ?>;
-            const timerStorageKey = 'lw_level_on_since_' + level;
+            const csrfToken = <?php echo json_encode($csrfToken); ?>;
             const onTimerEl = document.getElementById('on-timer');
             const toggleCheckbox = document.getElementById('toggleLevel');
             let timerInterval = null;
-            const historyStorageKey = 'lw_level_history_' + level;
-            const liveCheckpointKey = 'lw_level_live_' + level;
+            let serverStartedAtMs = <?php echo $activationStartedAt ? (strtotime($activationStartedAt) * 1000) : 'null'; ?>;
 
             function formatElapsed(ms) {
                 const totalSeconds = Math.floor(ms / 1000);
@@ -328,132 +357,86 @@ $imagePath = getImagePath((string)$level);
                 return h + ':' + m + ':' + s;
             }
 
-            function getHistory() {
-                try { return JSON.parse(localStorage.getItem(historyStorageKey) || '[]'); }
-                catch (e) { return []; }
-            }
-
-            function addHistoryEntry(startedAt, endedAt, cutoff) {
-                const history = getHistory();
-                history.unshift({
-                    startedAt: startedAt,
-                    durationMs: endedAt - startedAt,
-                    cutoff: !!cutoff
-                });
-                localStorage.setItem(historyStorageKey, JSON.stringify(history.slice(0, 15)));
-                renderHistory();
-            }
-
-            function renderHistory() {
-                const listEl = document.getElementById('on-history-list');
-                if (!listEl) return;
-                const history = getHistory();
-                if (history.length === 0) {
-                    listEl.innerHTML = '<span class="text-gray-600">記録はまだありません</span>';
-                    return;
-                }
-                listEl.innerHTML = history.map(function(entry) {
-                    const d = new Date(entry.startedAt);
-                    const dateStr = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-                    const durStr = formatElapsed(entry.durationMs);
-                    const badge = entry.cutoff
-                        ? '<span class="text-red-400">強制終了</span>'
-                        : '<span class="text-gray-500">手動OFF</span>';
-                    return '<div class="flex items-center justify-between gap-2 bg-black/20 px-2.5 py-1.5 rounded">' +
-                        '<span>' + dateStr + '</span><span class="font-mono">' + durStr + '</span>' + badge + '</div>';
-                }).join('');
-            }
-
             function tick() {
-                const since = parseInt(sessionStorage.getItem(timerStorageKey) || '0', 10);
-                if (!since) return;
-                onTimerEl.textContent = '(' + formatElapsed(Date.now() - since) + ')';
-                // 強制終了時に経過時間を推定できるよう、定期的にチェックポイントを保存
-                localStorage.setItem(liveCheckpointKey, JSON.stringify({ start: since, lastSeen: Date.now() }));
+                if (!serverStartedAtMs) return;
+                onTimerEl.textContent = '(' + formatElapsed(Date.now() - serverStartedAtMs) + ')';
             }
 
-            window.startOnTimer = function() {
-                if (!sessionStorage.getItem(timerStorageKey)) {
-                    sessionStorage.setItem(timerStorageKey, String(Date.now()));
-                }
+            function startTicking() {
                 onTimerEl.classList.remove('hidden');
                 tick();
                 if (timerInterval) clearInterval(timerInterval);
                 timerInterval = setInterval(tick, 1000);
-            };
+            }
 
-            window.stopOnTimer = function() {
-                const since = parseInt(sessionStorage.getItem(timerStorageKey) || '0', 10);
-                if (since) {
-                    addHistoryEntry(since, Date.now(), false);
-                }
-                sessionStorage.removeItem(timerStorageKey);
-                localStorage.removeItem(liveCheckpointKey);
+            function stopTicking() {
                 onTimerEl.classList.add('hidden');
                 if (timerInterval) clearInterval(timerInterval);
                 timerInterval = null;
+            }
+
+            if (serverStartedAtMs) startTicking();
+
+            // トグル操作 → サーバーへON/OFFをPOSTし、成功した場合のみ画面に反映する
+            window.handleToggleChange = function(isChecked) {
+                toggleCheckbox.disabled = true;
+                const body = new URLSearchParams({
+                    action: isChecked ? 'start' : 'stop',
+                    level: String(level),
+                    csrf_token: csrfToken
+                });
+                fetch('toggle_level.php', { method: 'POST', body: body })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        toggleCheckbox.disabled = false;
+                        if (data.error) {
+                            // 失敗時はトグルを元の状態に戻す
+                            toggleCheckbox.checked = !isChecked;
+                            return;
+                        }
+                        serverStartedAtMs = data.startedAtMs;
+                        toggleImage('level-media', 'status-level', !!serverStartedAtMs);
+                        if (serverStartedAtMs) startTicking(); else { stopTicking(); refreshHistory(); }
+                    })
+                    .catch(function() {
+                        toggleCheckbox.disabled = false;
+                        toggleCheckbox.checked = !isChecked;
+                    });
             };
 
-            // 強制終了を検知した際に、画面上部にポップアップ通知を表示する
-            function showCutoffToast(durationMs) {
-                var existing = document.getElementById('lw-cutoff-toast');
-                if (existing) existing.remove();
-                var toast = document.createElement('div');
-                toast.id = 'lw-cutoff-toast';
-                toast.textContent = '前回「技術発生」が強制終了しました（経過時間: ' + formatElapsed(durationMs) + '）';
-                toast.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);' +
-                    'background:rgba(120,20,20,0.9);color:#fff;font-size:12px;letter-spacing:0.03em;' +
-                    'padding:10px 18px;border-radius:999px;border:1px solid rgba(255,120,120,0.4);' +
-                    'z-index:99999;backdrop-filter:blur(6px);transition:opacity 0.5s;white-space:nowrap;';
-                document.body.appendChild(toast);
-                setTimeout(function() {
-                    toast.style.opacity = '0';
-                    setTimeout(function() { toast.remove(); }, 500);
-                }, 4000);
-            }
-
-            // 前回、手動OFFを経ずにセッションが失われていた場合（バックグラウンドでの強制終了等）、
-            // 最後に記録できていたチェックポイントを元に「強制終了」として履歴に残し、ポップアップで知らせる
-            if (!sessionStorage.getItem(timerStorageKey)) {
-                const liveRaw = localStorage.getItem(liveCheckpointKey);
-                if (liveRaw) {
-                    try {
-                        const live = JSON.parse(liveRaw);
-                        if (live && live.start && live.lastSeen) {
-                            addHistoryEntry(live.start, live.lastSeen, true);
-                            window.addEventListener('DOMContentLoaded', function() {
-                                showCutoffToast(live.lastSeen - live.start);
-                            });
+            // フォアグラウンドに戻った瞬間、サーバーの最新状態と同期する
+            // （バックグラウンド中にCronによる自動終了(24h)が行われていた場合の反映も兼ねる）
+            function resyncWithServer() {
+                const body = new URLSearchParams({ action: 'status', level: String(level), csrf_token: csrfToken });
+                fetch('toggle_level.php', { method: 'POST', body: body })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data.error) return;
+                        const wasOn = !!serverStartedAtMs;
+                        serverStartedAtMs = data.startedAtMs;
+                        const isOn = !!serverStartedAtMs;
+                        if (wasOn !== isOn) {
+                            toggleCheckbox.checked = isOn;
+                            toggleImage('level-media', 'status-level', isOn);
+                            if (isOn) startTicking(); else { stopTicking(); refreshHistory(); }
+                        } else if (isOn) {
+                            tick();
+                            if (!timerInterval) startTicking();
                         }
-                    } catch (e) {}
-                    localStorage.removeItem(liveCheckpointKey);
-                }
-            }
-            renderHistory();
-
-            // ページを開き直した時、ON状態が保存されていればトグルとタイマーを復元する（同一タブ内でのみ）
-            // 保存が無ければ、ブラウザ側の自動復元によるズレを防ぐため明示的にOFFへ揃える
-            if (sessionStorage.getItem(timerStorageKey) && toggleCheckbox) {
-                toggleCheckbox.checked = true;
-                toggleImage('level-media', 'status-level', true);
-            } else if (toggleCheckbox) {
-                toggleCheckbox.checked = false;
-                toggleImage('level-media', 'status-level', false);
+                    })
+                    .catch(function() {});
             }
 
-            // フォアグラウンドに戻った瞬間、表示更新タイマー(setInterval)がiOSに止められたままの場合があるため強制的に再起動する
-            function resumeTickIfNeeded() {
-                if (sessionStorage.getItem(timerStorageKey)) {
-                    tick();
-                    if (timerInterval) clearInterval(timerInterval);
-                    timerInterval = setInterval(tick, 1000);
-                }
+            function refreshHistory() {
+                // 履歴はページ再読み込み時にサーバーから描画されるため、OFF直後は簡易的に再読み込みする
+                window.location.reload();
             }
+
             document.addEventListener('visibilitychange', function() {
-                if (document.visibilityState === 'visible') resumeTickIfNeeded();
+                if (document.visibilityState === 'visible') resyncWithServer();
             });
-            window.addEventListener('pageshow', resumeTickIfNeeded);
-            window.addEventListener('focus', resumeTickIfNeeded);
+            window.addEventListener('pageshow', resyncWithServer);
+            window.addEventListener('focus', resyncWithServer);
         })();
 
         const canvas = document.getElementById('waveCanvas');

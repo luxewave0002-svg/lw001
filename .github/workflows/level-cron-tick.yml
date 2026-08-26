@@ -1,0 +1,14 @@
+name: Level Activation Cron Tick
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cron_tick.php
+        run: |
+          curl -s -f "https://luxewave.jp/test/cron_tick.php" || echo "cron_tick.php call failed (non-fatal)"

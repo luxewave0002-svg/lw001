@@ -312,6 +312,28 @@ try {
         )
     ");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_login_attempts_identifier ON login_attempts(identifier, created_at)");
+
+    // 「技術発生」の状態をサーバー側で管理するためのテーブル（クライアント側の状態消失に依存しないようにするため）
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS level_activation (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            level INTEGER NOT NULL,
+            started_at DATETIME,
+            UNIQUE(user_id, level)
+        )
+    ");
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS level_activation_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            level INTEGER NOT NULL,
+            started_at DATETIME NOT NULL,
+            ended_at DATETIME NOT NULL,
+            ended_reason TEXT NOT NULL DEFAULT 'manual'
+        )
+    ");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_level_activation_history_user_level ON level_activation_history(user_id, level, started_at)");
 } catch (PDOException $e) {
     die("DB Connection failed: " . $e->getMessage());
 }
@@ -362,6 +384,52 @@ function issueRememberCookie($pdo, $userId) {
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
+}
+
+// 「技術発生」の現在の状態を取得する（started_atがあればON中、nullならOFF）
+function getLevelActivation($pdo, $userId, $level) {
+    $stmt = $pdo->prepare("SELECT started_at FROM level_activation WHERE user_id = ? AND level = ?");
+    $stmt->execute([$userId, $level]);
+    $row = $stmt->fetch();
+    return $row ? $row['started_at'] : null;
+}
+
+// 「技術発生」をONにする（既にON中なら何もしない＝多重POSTでも安全）
+function startLevelActivation($pdo, $userId, $level) {
+    $existing = getLevelActivation($pdo, $userId, $level);
+    if ($existing !== null && $existing !== false) {
+        return $existing;
+    }
+    $startedAt = date('Y-m-d H:i:s');
+    $pdo->prepare("
+        INSERT INTO level_activation (user_id, level, started_at) VALUES (?, ?, ?)
+        ON CONFLICT(user_id, level) DO UPDATE SET started_at = excluded.started_at
+    ")->execute([$userId, $level, $startedAt]);
+    return $startedAt;
+}
+
+// 「技術発生」をOFFにし、履歴に確定記録として残す
+function stopLevelActivation($pdo, $userId, $level, $reason = 'manual') {
+    $startedAt = getLevelActivation($pdo, $userId, $level);
+    if ($startedAt === null || $startedAt === false) {
+        return false;
+    }
+    $endedAt = date('Y-m-d H:i:s');
+    $pdo->prepare("INSERT INTO level_activation_history (user_id, level, started_at, ended_at, ended_reason) VALUES (?, ?, ?, ?, ?)")
+        ->execute([$userId, $level, $startedAt, $endedAt, $reason]);
+    $pdo->prepare("UPDATE level_activation SET started_at = NULL WHERE user_id = ? AND level = ?")
+        ->execute([$userId, $level]);
+    return true;
+}
+
+// 直近の履歴を取得する（新しい順）
+function getLevelActivationHistory($pdo, $userId, $level, $limit = 15) {
+    $stmt = $pdo->prepare("SELECT started_at, ended_at, ended_reason FROM level_activation_history WHERE user_id = ? AND level = ? ORDER BY started_at DESC LIMIT ?");
+    $stmt->bindValue(1, $userId, PDO::PARAM_INT);
+    $stmt->bindValue(2, $level, PDO::PARAM_INT);
+    $stmt->bindValue(3, $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
 }
 
 // ログ記録用ヘルパー関数

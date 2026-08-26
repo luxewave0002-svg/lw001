@@ -79,8 +79,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verif
 
 // ログイン中のユーザーが解除済みのLevel一覧（DBのパスワードと毎回照合）
 $unlockedLevels = [];
+$levelActivations = [];
+$levelHistories = [];
 foreach ([1, 2, 3, 4] as $lvl) {
     $unlockedLevels[$lvl] = isLevelUnlocked($pdo, $_SESSION['user_id'] ?? null, $lvl);
+    if ($unlockedLevels[$lvl] && isset($_SESSION['user_id'])) {
+        $levelActivations[$lvl] = getLevelActivation($pdo, $_SESSION['user_id'], $lvl);
+        $levelHistories[$lvl] = getLevelActivationHistory($pdo, $_SESSION['user_id'], $lvl);
+    } else {
+        $levelActivations[$lvl] = null;
+        $levelHistories[$lvl] = [];
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -313,18 +322,19 @@ foreach ([1, 2, 3, 4] as $lvl) {
                         </div>
                     <?php endif; ?>
                 <?php else: ?>
+                    <?php $activationStartedAt = $levelActivations[$i] ?? null; ?>
                     <div class="flex items-center mb-8 inline-block">
                         <span class="mr-6 font-light text-gray-200 tracking-wider">技術発生</span>
                         <div class="relative inline-block w-12 h-6 align-middle select-none">
-                            <input type="checkbox" name="toggleTest<?php echo $i; ?>" id="toggleTest<?php echo $i; ?>" autocomplete="off" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-transparent border-2 appearance-none cursor-pointer outline-none" onchange="toggleImage('test<?php echo $i; ?>-media', 'status-test<?php echo $i; ?>', this.checked)"/>
+                            <input type="checkbox" name="toggleTest<?php echo $i; ?>" id="toggleTest<?php echo $i; ?>" autocomplete="off" <?php echo $activationStartedAt ? 'checked' : ''; ?> class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-transparent border-2 appearance-none cursor-pointer outline-none" onchange="handleToggleChange(<?php echo $i; ?>, this.checked)"/>
                             <label for="toggleTest<?php echo $i; ?>" class="toggle-label block overflow-hidden h-6 rounded-full cursor-pointer border border-white/30"></label>
                             <div class="toggle-dot absolute block w-5 h-5 rounded-full shadow inset-y-0 left-0 mt-0.5 ml-0.5 pointer-events-none"></div>
                         </div>
-                        <span id="status-test<?php echo $i; ?>" class="ml-6 font-semibold tracking-widest text-gray-400 text-sm">OFF</span>
-                        <span id="on-timer<?php echo $i; ?>" class="hidden ml-3 text-xs text-gray-400 tracking-wider tabular-nums">(00:00:00)</span>
+                        <span id="status-test<?php echo $i; ?>" class="ml-6 font-semibold tracking-widest <?php echo $activationStartedAt ? 'text-white' : 'text-gray-400'; ?> text-sm"><?php echo $activationStartedAt ? 'ON' : 'OFF'; ?></span>
+                        <span id="on-timer<?php echo $i; ?>" class="<?php echo $activationStartedAt ? '' : 'hidden'; ?> ml-3 text-xs text-gray-400 tracking-wider tabular-nums">(00:00:00)</span>
                     </div>
 
-                    <div id="test<?php echo $i; ?>-media" class="hidden transition-all duration-500 opacity-0">
+                    <div id="test<?php echo $i; ?>-media" class="<?php echo $activationStartedAt ? '' : 'hidden'; ?> transition-all duration-500 <?php echo $activationStartedAt ? 'opacity-100' : 'opacity-0'; ?>">
                         <div class="overflow-hidden rounded shadow-2xl bg-black flex justify-center items-center py-8">
                             <?php if (isVideoFile($imagePath)): ?>
                                 <video src="<?php echo htmlspecialchars($imagePath); ?>" controls class="w-full max-w-sm h-auto opacity-90 hover:opacity-100 transition-opacity duration-500"></video>
@@ -340,7 +350,30 @@ foreach ([1, 2, 3, 4] as $lvl) {
 
                     <div class="mt-10 pt-6 border-t border-white/10 text-left max-w-xs mx-auto">
                         <p class="text-xs text-gray-500 tracking-widest mb-3">HISTORY</p>
-                        <div id="on-history-list<?php echo $i; ?>" class="flex flex-col gap-1.5 text-xs text-gray-400"></div>
+                        <div id="on-history-list<?php echo $i; ?>" class="flex flex-col gap-1.5 text-xs text-gray-400">
+                            <?php if (empty($levelHistories[$i])): ?>
+                                <span class="text-gray-600">記録はまだありません</span>
+                            <?php else: ?>
+                                <?php foreach ($levelHistories[$i] as $entry):
+                                    $startTs = strtotime($entry['started_at']);
+                                    $endTs = strtotime($entry['ended_at']);
+                                    $durationSec = max(0, $endTs - $startTs);
+                                    $durStr = sprintf('%02d:%02d:%02d', intdiv($durationSec, 3600), intdiv($durationSec % 3600, 60), $durationSec % 60);
+                                    $dateStr = date('n/j H:i', $startTs);
+                                    $isTimeout = $entry['ended_reason'] === 'timeout';
+                                ?>
+                                    <div class="flex items-center justify-between gap-2 bg-black/20 px-2.5 py-1.5 rounded">
+                                        <span><?php echo htmlspecialchars($dateStr); ?></span>
+                                        <span class="font-mono"><?php echo htmlspecialchars($durStr); ?></span>
+                                        <?php if ($isTimeout): ?>
+                                            <span class="text-yellow-400">自動終了(24h)</span>
+                                        <?php else: ?>
+                                            <span class="text-gray-500">手動OFF</span>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 <?php endif; ?>
             </section>
@@ -496,29 +529,33 @@ setInterval(keepAlive, 5000);
             });
         }
 
-        // ON/OFF切り替え関数
+        // ON/OFF切り替え関数（見た目の切り替えのみ。実際の状態管理はサーバー側で行う）
         function toggleImage(elementId, statusId, isChecked) {
             const targetElement = document.getElementById(elementId);
             const statusElement = document.getElementById(statusId);
-            const level = statusId.replace('status-test', '');
             if (isChecked) {
                 targetElement.classList.remove('hidden');
                 setTimeout(() => { targetElement.classList.add('opacity-100'); }, 10);
                 statusElement.textContent = 'ON';
                 statusElement.classList.replace('text-gray-400', 'text-white');
-                startOnTimer(level);
             } else {
                 targetElement.classList.remove('opacity-100');
                 setTimeout(() => { targetElement.classList.add('hidden'); }, 300);
                 statusElement.textContent = 'OFF';
                 statusElement.classList.replace('text-white', 'text-gray-400');
-                stopOnTimer(level);
             }
         }
 
-        // 「技術発生」ONになってからの経過時間タイマー（Level番号ごとにlocalStorageへ保存。ページを開き直しても継続表示）
+        // 「技術発生」の状態はサーバー側(DB)で管理する。クライアントはstarted_atを元に表示するだけで、
+        // バックグラウンドで何時間放置されようが、開いた瞬間に正しい経過時間を計算できる。
         (function() {
             const onTimerIntervals = {};
+            const csrfToken = <?php echo json_encode($csrfToken); ?>;
+            const serverStartedAtMs = {
+                <?php foreach ([1,2,3,4] as $lvl): ?>
+                <?php echo $lvl; ?>: <?php echo $levelActivations[$lvl] ? (strtotime($levelActivations[$lvl]) * 1000) : 'null'; ?>,
+                <?php endforeach; ?>
+            };
 
             function formatElapsed(ms) {
                 const totalSeconds = Math.floor(ms / 1000);
@@ -528,142 +565,88 @@ setInterval(keepAlive, 5000);
                 return h + ':' + m + ':' + s;
             }
 
-            function getHistory(level) {
-                try { return JSON.parse(localStorage.getItem('lw_level_history_' + level) || '[]'); }
-                catch (e) { return []; }
-            }
-
-            function addHistoryEntry(level, startedAt, endedAt, cutoff) {
-                const key = 'lw_level_history_' + level;
-                const history = getHistory(level);
-                history.unshift({ startedAt: startedAt, durationMs: endedAt - startedAt, cutoff: !!cutoff });
-                localStorage.setItem(key, JSON.stringify(history.slice(0, 15)));
-                renderHistory(level);
-            }
-
-            function renderHistory(level) {
-                const listEl = document.getElementById('on-history-list' + level);
-                if (!listEl) return;
-                const history = getHistory(level);
-                if (history.length === 0) {
-                    listEl.innerHTML = '<span class="text-gray-600">記録はまだありません</span>';
-                    return;
-                }
-                listEl.innerHTML = history.map(function(entry) {
-                    const d = new Date(entry.startedAt);
-                    const dateStr = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-                    const durStr = formatElapsed(entry.durationMs);
-                    const badge = entry.cutoff
-                        ? '<span class="text-red-400">強制終了</span>'
-                        : '<span class="text-gray-500">手動OFF</span>';
-                    return '<div class="flex items-center justify-between gap-2 bg-black/20 px-2.5 py-1.5 rounded">' +
-                        '<span>' + dateStr + '</span><span class="font-mono">' + durStr + '</span>' + badge + '</div>';
-                }).join('');
-            }
-
-            // 強制終了を検知した際に、画面上部にポップアップ通知を表示する
-            function showCutoffToast(level, durationMs) {
-                var existing = document.getElementById('lw-cutoff-toast');
-                if (existing) existing.remove();
-                var toast = document.createElement('div');
-                toast.id = 'lw-cutoff-toast';
-                toast.textContent = '前回 Level.' + level + ' の「技術発生」が強制終了しました（経過時間: ' + formatElapsed(durationMs) + '）';
-                toast.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);' +
-                    'background:rgba(120,20,20,0.9);color:#fff;font-size:12px;letter-spacing:0.03em;' +
-                    'padding:10px 18px;border-radius:999px;border:1px solid rgba(255,120,120,0.4);' +
-                    'z-index:99999;backdrop-filter:blur(6px);transition:opacity 0.5s;white-space:nowrap;';
-                document.body.appendChild(toast);
-                setTimeout(function() {
-                    toast.style.opacity = '0';
-                    setTimeout(function() { toast.remove(); }, 500);
-                }, 4000);
-            }
-
             function tick(level) {
-                const storageKey = 'lw_level_on_since_' + level;
                 const onTimerEl = document.getElementById('on-timer' + level);
-                const since = parseInt(sessionStorage.getItem(storageKey) || '0', 10);
-                if (!since || !onTimerEl) return;
-                onTimerEl.textContent = '(' + formatElapsed(Date.now() - since) + ')';
-                localStorage.setItem('lw_level_live_' + level, JSON.stringify({ start: since, lastSeen: Date.now() }));
+                if (!serverStartedAtMs[level] || !onTimerEl) return;
+                onTimerEl.textContent = '(' + formatElapsed(Date.now() - serverStartedAtMs[level]) + ')';
             }
 
-            window.startOnTimer = function(level) {
-                const storageKey = 'lw_level_on_since_' + level;
+            function startTicking(level) {
                 const onTimerEl = document.getElementById('on-timer' + level);
-                if (!onTimerEl) return;
-                if (!sessionStorage.getItem(storageKey)) {
-                    sessionStorage.setItem(storageKey, String(Date.now()));
-                }
-                onTimerEl.classList.remove('hidden');
+                if (onTimerEl) onTimerEl.classList.remove('hidden');
                 tick(level);
                 if (onTimerIntervals[level]) clearInterval(onTimerIntervals[level]);
                 onTimerIntervals[level] = setInterval(() => tick(level), 1000);
-            };
+            }
 
-            window.stopOnTimer = function(level) {
-                const storageKey = 'lw_level_on_since_' + level;
+            function stopTicking(level) {
                 const onTimerEl = document.getElementById('on-timer' + level);
-                const since = parseInt(sessionStorage.getItem(storageKey) || '0', 10);
-                if (since) {
-                    addHistoryEntry(level, since, Date.now(), false);
-                }
-                sessionStorage.removeItem(storageKey);
-                localStorage.removeItem('lw_level_live_' + level);
                 if (onTimerEl) onTimerEl.classList.add('hidden');
                 if (onTimerIntervals[level]) clearInterval(onTimerIntervals[level]);
                 onTimerIntervals[level] = null;
+            }
+
+            [1, 2, 3, 4].forEach(function(level) {
+                if (serverStartedAtMs[level]) startTicking(level);
+            });
+
+            // トグル操作 → サーバーへON/OFFをPOSTし、成功した場合のみ画面に反映する
+            window.handleToggleChange = function(level, isChecked) {
+                const checkbox = document.getElementById('toggleTest' + level);
+                if (checkbox) checkbox.disabled = true;
+                const body = new URLSearchParams({
+                    action: isChecked ? 'start' : 'stop',
+                    level: String(level),
+                    csrf_token: csrfToken
+                });
+                fetch('toggle_level.php', { method: 'POST', body: body })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (checkbox) checkbox.disabled = false;
+                        if (data.error) {
+                            if (checkbox) checkbox.checked = !isChecked;
+                            return;
+                        }
+                        serverStartedAtMs[level] = data.startedAtMs;
+                        toggleImage('test' + level + '-media', 'status-test' + level, !!data.startedAtMs);
+                        if (data.startedAtMs) startTicking(level); else { stopTicking(level); window.location.reload(); }
+                    })
+                    .catch(function() {
+                        if (checkbox) checkbox.disabled = false;
+                        if (checkbox) checkbox.checked = !isChecked;
+                    });
             };
 
-            // ページを開き直した時、ON状態が保存されていればトグルとタイマーを復元する（同一タブ内でのみ）
-            // 保存が無ければ、ブラウザ側の自動復元によるズレを防ぐため明示的にOFFへ揃える
-            document.addEventListener('DOMContentLoaded', function() {
+            // フォアグラウンドに戻った瞬間、サーバーの最新状態と同期する（Cronによる自動終了の反映も兼ねる）
+            function resyncWithServer() {
                 [1, 2, 3, 4].forEach(function(level) {
-                    const storageKey = 'lw_level_on_since_' + level;
-                    const checkbox = document.getElementById('toggleTest' + level);
-
-                    // 前回、手動OFFを経ずにセッションが失われていた場合は「強制終了」として履歴に残す
-                    if (!sessionStorage.getItem(storageKey)) {
-                        const liveRaw = localStorage.getItem('lw_level_live_' + level);
-                        if (liveRaw) {
-                            try {
-                                const live = JSON.parse(liveRaw);
-                                if (live && live.start && live.lastSeen) {
-                                    addHistoryEntry(level, live.start, live.lastSeen, true);
-                                    showCutoffToast(level, live.lastSeen - live.start);
-                                }
-                            } catch (e) {}
-                            localStorage.removeItem('lw_level_live_' + level);
-                        }
-                    }
-                    renderHistory(level);
-
-                    if (!checkbox) return;
-                    if (sessionStorage.getItem(storageKey)) {
-                        checkbox.checked = true;
-                        toggleImage('test' + level + '-media', 'status-test' + level, true);
-                    } else {
-                        checkbox.checked = false;
-                        toggleImage('test' + level + '-media', 'status-test' + level, false);
-                    }
-                });
-            });
-
-            // フォアグラウンドに戻った瞬間、表示更新タイマー(setInterval)がiOSに止められたままの場合があるため強制的に再起動する
-            function resumeAllTicksIfNeeded() {
-                [1, 2, 3, 4].forEach(function(level) {
-                    if (sessionStorage.getItem('lw_level_on_since_' + level)) {
-                        tick(level);
-                        if (onTimerIntervals[level]) clearInterval(onTimerIntervals[level]);
-                        onTimerIntervals[level] = setInterval(() => tick(level), 1000);
-                    }
+                    const body = new URLSearchParams({ action: 'status', level: String(level), csrf_token: csrfToken });
+                    fetch('toggle_level.php', { method: 'POST', body: body })
+                        .then(function(res) { return res.json(); })
+                        .then(function(data) {
+                            if (data.error) return;
+                            const wasOn = !!serverStartedAtMs[level];
+                            serverStartedAtMs[level] = data.startedAtMs;
+                            const isOn = !!serverStartedAtMs[level];
+                            const checkbox = document.getElementById('toggleTest' + level);
+                            if (wasOn !== isOn) {
+                                if (checkbox) checkbox.checked = isOn;
+                                toggleImage('test' + level + '-media', 'status-test' + level, isOn);
+                                if (isOn) startTicking(level); else { stopTicking(level); window.location.reload(); }
+                            } else if (isOn) {
+                                tick(level);
+                                if (!onTimerIntervals[level]) startTicking(level);
+                            }
+                        })
+                        .catch(function() {});
                 });
             }
+
             document.addEventListener('visibilitychange', function() {
-                if (document.visibilityState === 'visible') resumeAllTicksIfNeeded();
+                if (document.visibilityState === 'visible') resyncWithServer();
             });
-            window.addEventListener('pageshow', resumeAllTicksIfNeeded);
-            window.addEventListener('focus', resumeAllTicksIfNeeded);
+            window.addEventListener('pageshow', resyncWithServer);
+            window.addEventListener('focus', resyncWithServer);
         })();
 
         // ページ読み込み時の処理 (PHPからの変数を受け取る)
