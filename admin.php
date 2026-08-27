@@ -377,6 +377,26 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
         }
     }
 
+    // Limitedレベル用CODEの保存処理
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_limited_code') {
+        $limitedLevel = filter_var($_POST['limited_level'] ?? '', FILTER_VALIDATE_INT);
+        $newCode = trim($_POST['limited_code_value'] ?? '');
+
+        if (!$limitedLevel || !isLimitedLevel($limitedLevel)) {
+            $message = "不正なLevelです。";
+            $message_class = 'error';
+        } elseif ($newCode === '') {
+            $message = "CODEを入力してください。";
+            $message_class = 'error';
+        } else {
+            $pdo->prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+                ->execute(['limited_code_' . $limitedLevel, $newCode]);
+            $message = htmlspecialchars(getLimitedLevelLabel($limitedLevel)) . " のCODEを更新しました。";
+            $message_class = 'success';
+            writeLog($pdo, null, 'update_limited_code', getLimitedLevelLabel($limitedLevel) . " のCODEを更新しました。");
+        }
+    }
+
     // Levelページのメディア アップロード/削除処理
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array($_POST['action'], ['upload_level_media', 'delete_level_media'])) {
         $levelId = $_POST['level_id'] ?? '';
@@ -956,10 +976,10 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-                <?php foreach ([1, 2, 3, 4] as $i): ?>
+                <?php foreach (array_merge([1, 2, 3, 4], array_keys(LIMITED_LEVELS)) as $i): ?>
                     <?php $levelImagePath = getImagePath((string)$i); ?>
-                    <div class="bg-black/30 border border-white/10 rounded-xl backdrop-blur-sm p-6 w-full">
-                        <h3 class="text-lg tracking-wider mb-4">Level.<?php echo $i; ?></h3>
+                    <div class="bg-black/30 border border-white/10 rounded-xl backdrop-blur-sm p-6 w-full <?php echo isLimitedLevel($i) ? 'ring-1 ring-white/20' : ''; ?>">
+                        <h3 class="text-lg tracking-wider mb-4"><?php echo htmlspecialchars(isLimitedLevel($i) ? getLimitedLevelLabel($i) : 'Level.' . $i); ?></h3>
 
                         <div class="overflow-hidden rounded shadow-2xl bg-black flex justify-center items-center py-6 mb-4">
                             <?php if (isVideoFile($levelImagePath)): ?>
@@ -975,8 +995,33 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
                             <input type="file" name="level_image" accept="image/*,video/*" class="text-xs text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-light file:bg-white/10 file:text-white hover:file:bg-white/20 w-full sm:w-auto cursor-pointer focus:outline-none">
                             <div class="flex gap-2 w-full sm:w-auto shrink-0">
                                 <button type="submit" name="action" value="upload_level_media" class="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded transition-colors w-full sm:w-auto tracking-widest font-light">UPLOAD</button>
-                                <button type="submit" name="action" value="delete_level_media" class="bg-red-900/30 hover:bg-red-800/50 text-red-200 border border-red-900/50 text-sm px-4 py-2 rounded transition-colors w-full sm:w-auto tracking-widest font-light" onclick="return confirm('Level.<?php echo $i; ?> のメディアを削除して初期状態に戻しますか？');">DELETE</button>
+                                <button type="submit" name="action" value="delete_level_media" class="bg-red-900/30 hover:bg-red-800/50 text-red-200 border border-red-900/50 text-sm px-4 py-2 rounded transition-colors w-full sm:w-auto tracking-widest font-light" onclick="return confirm('<?php echo htmlspecialchars(isLimitedLevel($i) ? getLimitedLevelLabel($i) : 'Level.' . $i); ?> のメディアを削除して初期状態に戻しますか？');">DELETE</button>
                             </div>
+                        </form>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Limitedレベル用CODE管理 -->
+            <div class="flex flex-col justify-between items-start mb-4 mt-12 gap-4">
+                <h2 class="text-xl tracking-wider">Limited Level Codes</h2>
+                <p class="text-xs text-gray-500">ユーザーがダッシュボードで入力するCODEを設定します。空欄のままだと誰も解除できません。</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                <?php foreach (array_keys(LIMITED_LEVELS) as $lvl):
+                    $currentCodeStmt = $pdo->prepare("SELECT value FROM settings WHERE key = ?");
+                    $currentCodeStmt->execute(['limited_code_' . $lvl]);
+                    $currentCode = $currentCodeStmt->fetchColumn();
+                ?>
+                    <div class="bg-black/30 border border-white/10 rounded-xl backdrop-blur-sm p-6 w-full">
+                        <h3 class="text-lg tracking-wider mb-4"><?php echo htmlspecialchars(getLimitedLevelLabel($lvl)); ?></h3>
+                        <p class="text-xs text-gray-400 mb-3">現在のCODE: <span class="font-mono text-white"><?php echo $currentCode ? htmlspecialchars($currentCode) : '（未設定）'; ?></span></p>
+                        <form method="POST" class="flex flex-wrap gap-3 items-center">
+                            <input type="hidden" name="action" value="update_limited_code">
+                            <input type="hidden" name="limited_level" value="<?php echo $lvl; ?>">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                            <input type="text" name="limited_code_value" placeholder="新しいCODE" class="bg-black/40 border border-white/20 rounded px-3 py-2 text-sm text-white w-full sm:w-40 focus:outline-none focus:border-white/50">
+                            <button type="submit" class="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded transition-colors tracking-widest font-light">保存</button>
                         </form>
                     </div>
                 <?php endforeach; ?>

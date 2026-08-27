@@ -54,6 +54,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Limitedレベル用CODEの入力処理
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'redeem_limited_code') {
+    $inputCode = $_POST['limited_code'] ?? '';
+    $unlockedLevel = redeemLimitedCode($pdo, $userId, $inputCode);
+
+    if ($unlockedLevel !== false) {
+        $message = htmlspecialchars(getLimitedLevelLabel($unlockedLevel)) . " が解除されました！";
+        $message_class = 'success';
+        writeLog($pdo, $userId, 'limited_code_redeem', getLimitedLevelLabel($unlockedLevel) . " のCODEを入力して解除しました。");
+    } else {
+        $message = "CODEが正しくありません。";
+        $message_class = 'error';
+    }
+}
+
 // 招待コードの再発行処理（古い未使用コードは無効化して履歴に残し、新しいコードを1つ発行する）
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'reissue_invite_code') {
     try {
@@ -550,6 +565,20 @@ if (!empty($devices)) {
                     </div>
                 </details>
             <?php endif; ?>
+        </div>
+
+        <!-- Limitedレベル用CODE入力 -->
+        <div class="bg-white/5 border border-white/10 rounded-lg p-4 mb-4">
+            <div class="flex flex-wrap items-center gap-3">
+                <span class="text-sm text-gray-300 tracking-wider">CODE</span>
+                <span class="text-xs text-gray-500">特別なCODEを入力すると、対応するLevelが出現します。</span>
+            </div>
+            <form method="POST" class="flex flex-wrap items-center gap-3 mt-3">
+                <input type="hidden" name="action" value="redeem_limited_code">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                <input type="text" name="limited_code" placeholder="CODE" required class="bg-black/40 border border-white/20 rounded px-3 py-2 text-sm text-white w-full sm:w-48 focus:outline-none focus:border-white/50">
+                <button type="submit" class="text-xs bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded transition-colors text-gray-300 hover:text-white tracking-wider">送信</button>
+            </form>
         </div>
 
         <!-- Levelパスワード（発行済み分） -->

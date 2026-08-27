@@ -15,6 +15,9 @@ requireLogin($pdo, 'mobile_login.php');
 $myLevelPwStmt = $pdo->prepare("SELECT level, password FROM level_passwords WHERE user_id = ? AND revoked_at IS NULL AND password IS NOT NULL ORDER BY level ASC");
 $myLevelPwStmt->execute([$_SESSION['user_id']]);
 $myLevelPasswords = $myLevelPwStmt->fetchAll();
+
+// CODE入力で解除済みのLimitedレベル一覧を取得
+$unlockedLimitedLevels = getUnlockedLimitedLevels($pdo, $_SESSION['user_id']);
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -136,6 +139,14 @@ $myLevelPasswords = $myLevelPwStmt->fetchAll();
             <a href="mobile_level.php?level=<?php echo $lvl; ?>" class="bg-white/5 hover:bg-white/10 border border-white/20 text-gray-200 hover:text-white py-4 rounded-lg tracking-widest text-sm transition-all text-center">Level.<?php echo $lvl; ?></a>
             <?php endforeach; ?>
         </div>
+
+        <?php if (!empty($unlockedLimitedLevels)): ?>
+        <div class="grid grid-cols-2 gap-3 mt-3">
+            <?php foreach ($unlockedLimitedLevels as $lvl): ?>
+            <a href="mobile_level.php?level=<?php echo $lvl; ?>" class="bg-white/10 hover:bg-white/20 border border-white/30 text-gray-100 hover:text-white py-4 rounded-lg tracking-widest text-sm transition-all text-center"><?php echo htmlspecialchars(getLimitedLevelLabel($lvl)); ?></a>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
 
         <a href="mobile.php" class="text-xs text-gray-500 underline underline-offset-4 tracking-widest mt-10 inline-block">MENUに戻る</a>
 

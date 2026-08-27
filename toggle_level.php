@@ -32,8 +32,9 @@ if (!$level || !in_array($action, ['start', 'stop', 'status'], true)) {
 
 $userId = $_SESSION['user_id'];
 
-// このLevelが解除済みか（パスワードで開放済みか）を確認する
-if (!isLevelUnlocked($pdo, $userId, $level)) {
+// このLevelが解除済みか（Limitedレベルはダッシュボードでの CODE 入力、通常Levelはパスワード発行）を確認する
+$unlocked = isLimitedLevel($level) ? isLimitedLevelUnlocked($pdo, $userId, $level) : isLevelUnlocked($pdo, $userId, $level);
+if (!$unlocked) {
     http_response_code(403);
     echo json_encode(['error' => 'level_locked']);
     exit;

@@ -334,6 +334,17 @@ try {
         )
     ");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_level_activation_history_user_level ON level_activation_history(user_id, level, started_at)");
+
+    // Limitedレベル（CODE入力で出現する特別レベル）のアクセス権テーブル
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS user_limited_access (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            level INTEGER NOT NULL,
+            unlocked_at DATETIME NOT NULL,
+            UNIQUE(user_id, level)
+        )
+    ");
 } catch (PDOException $e) {
     die("DB Connection failed: " . $e->getMessage());
 }
@@ -430,6 +441,56 @@ function getLevelActivationHistory($pdo, $userId, $level, $limit = 15) {
     $stmt->bindValue(3, $limit, PDO::PARAM_INT);
     $stmt->execute();
     return $stmt->fetchAll();
+}
+
+// Limitedレベル（CODE入力で出現する特別レベル）の設定
+// level番号を内部的に流用する: 5 = Limited.1、6 = Limited.2
+define('LIMITED_LEVELS', [5 => 'Limited.1', 6 => 'Limited.2']);
+
+// そのLevel番号がLimitedレベルかどうか
+function isLimitedLevel($level) {
+    return array_key_exists((int)$level, LIMITED_LEVELS);
+}
+
+// Limitedレベルの表示名を取得
+function getLimitedLevelLabel($level) {
+    return LIMITED_LEVELS[(int)$level] ?? ('Level.' . $level);
+}
+
+// ユーザーがそのLimitedレベルを解除済みか確認する
+function isLimitedLevelUnlocked($pdo, $userId, $level) {
+    if (!$userId) return false;
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM user_limited_access WHERE user_id = ? AND level = ?");
+    $stmt->execute([$userId, $level]);
+    return (int)$stmt->fetchColumn() > 0;
+}
+
+// ユーザーがログイン中にアクセス可能なLimitedレベル一覧を取得する
+function getUnlockedLimitedLevels($pdo, $userId) {
+    if (!$userId) return [];
+    $stmt = $pdo->prepare("SELECT level FROM user_limited_access WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+}
+
+// CODEを照合し、一致すれば該当Limitedレベルを解除する。戻り値は解除したlevel番号、失敗時はfalse
+function redeemLimitedCode($pdo, $userId, $inputCode) {
+    $inputCode = trim($inputCode);
+    if ($inputCode === '') return false;
+
+    foreach (array_keys(LIMITED_LEVELS) as $level) {
+        $stmt = $pdo->prepare("SELECT value FROM settings WHERE key = ?");
+        $stmt->execute(['limited_code_' . $level]);
+        $row = $stmt->fetch();
+        if ($row && $row['value'] !== '' && hash_equals($row['value'], $inputCode)) {
+            $pdo->prepare("
+                INSERT INTO user_limited_access (user_id, level, unlocked_at) VALUES (?, ?, datetime('now'))
+                ON CONFLICT(user_id, level) DO NOTHING
+            ")->execute([$userId, $level]);
+            return $level;
+        }
+    }
+    return false;
 }
 
 // ログ記録用ヘルパー関数

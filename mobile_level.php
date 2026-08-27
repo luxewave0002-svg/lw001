@@ -11,8 +11,8 @@ $level = (int)$level;
 $csrfToken = generateCsrfToken();
 $levelPasswordError = '';
 
-// Levelパスワードの照合処理
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verify_level_password') {
+// Levelパスワードの照合処理（Limitedレベルはダッシュボードでの別途CODE入力方式のため対象外）
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verify_level_password' && !isLimitedLevel($level)) {
     $token = $_POST['csrf_token'] ?? '';
     if (!verifyCsrfToken($token)) {
         // 不正/期限切れトークンの場合はエラー文言を出さず、通常のLevel画面（未解除状態）に戻す
@@ -43,8 +43,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verif
     }
 }
 
-// このLevelを閲覧できるか（DBのパスワードと毎回照合するので、削除されれば再ロックされる）
-$isLocked = !isLevelUnlocked($pdo, $_SESSION['user_id'] ?? null, $level);
+// このLevelを閲覧できるか
+// Limitedレベル（5,6）はダッシュボードでのCODE入力による解除、通常Levelは管理者発行パスワードによる解除
+$isLimited = isLimitedLevel($level);
+if ($isLimited) {
+    $isLocked = !isLimitedLevelUnlocked($pdo, $_SESSION['user_id'] ?? null, $level);
+} else {
+    $isLocked = !isLevelUnlocked($pdo, $_SESSION['user_id'] ?? null, $level);
+}
 
 // 「技術発生」の現在の状態と履歴をサーバー側から取得する
 $activationStartedAt = null;
@@ -180,12 +186,15 @@ $imagePath = getImagePath((string)$level);
     <canvas id="waveCanvas" class="fixed top-0 left-0 w-full h-full z-[-1] pointer-events-none"></canvas>
 
     <div class="text-center bg-black/40 p-8 md:p-10 rounded-2xl border border-white/20 backdrop-blur-md shadow-2xl w-full max-w-sm relative z-10 my-auto">
-        <h1 class="brand-font text-2xl font-extralight tracking-[0.2em] mb-8">Level.<?php echo $level; ?></h1>
+        <h1 class="brand-font text-2xl font-extralight tracking-[0.2em] mb-8"><?php echo $isLimited ? htmlspecialchars(getLimitedLevelLabel($level)) : 'Level.' . $level; ?></h1>
 
         <?php if ($isLocked): ?>
             <?php if (!isset($_SESSION['user_id'])): ?>
                 <p class="text-gray-300 text-sm mb-6">このLevelを見るにはログインが必要です。</p>
                 <a href="mobile_login.php" class="bg-white/10 hover:bg-white/20 border border-white/30 text-white py-3.5 rounded-full tracking-widest text-sm transition-all shadow-lg inline-block px-8">LOGIN</a>
+            <?php elseif ($isLimited): ?>
+                <p class="text-gray-300 text-sm mb-6">このLevelはダッシュボードでCODEを入力すると表示されます。</p>
+                <a href="dashboard.php" class="bg-white/10 hover:bg-white/20 border border-white/30 text-white py-3.5 rounded-full tracking-widest text-sm transition-all shadow-lg inline-block px-8">ダッシュボードへ</a>
             <?php else: ?>
                 <?php if ($levelPasswordError): ?>
                     <p class="text-red-400 text-xs mb-4"><?php echo htmlspecialchars($levelPasswordError); ?></p>

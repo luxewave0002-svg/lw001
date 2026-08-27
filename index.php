@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verif
     $verifyLevel = $_POST['level'] ?? '';
     $inputPassword = $_POST['level_password'] ?? '';
 
-    if (filter_var($verifyLevel, FILTER_VALIDATE_INT, array("options" => array("min_range"=>1, "max_range"=>10)))) {
+    if (filter_var($verifyLevel, FILTER_VALIDATE_INT, array("options" => array("min_range"=>1, "max_range"=>10))) && !isLimitedLevel($verifyLevel)) {
         $activePage = 'test' . $verifyLevel;
 
         if (!isset($_SESSION['user_id'])) {
@@ -81,8 +81,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verif
 $unlockedLevels = [];
 $levelActivations = [];
 $levelHistories = [];
-foreach ([1, 2, 3, 4] as $lvl) {
-    $unlockedLevels[$lvl] = isLevelUnlocked($pdo, $_SESSION['user_id'] ?? null, $lvl);
+foreach (array_merge([1, 2, 3, 4], array_keys(LIMITED_LEVELS)) as $lvl) {
+    $unlockedLevels[$lvl] = isLimitedLevel($lvl)
+        ? isLimitedLevelUnlocked($pdo, $_SESSION['user_id'] ?? null, $lvl)
+        : isLevelUnlocked($pdo, $_SESSION['user_id'] ?? null, $lvl);
     if ($unlockedLevels[$lvl] && isset($_SESSION['user_id'])) {
         $levelActivations[$lvl] = getLevelActivation($pdo, $_SESSION['user_id'], $lvl);
         $levelHistories[$lvl] = getLevelActivationHistory($pdo, $_SESSION['user_id'], $lvl);
@@ -91,6 +93,9 @@ foreach ([1, 2, 3, 4] as $lvl) {
         $levelHistories[$lvl] = [];
     }
 }
+$unlockedLimitedLevels = array_keys(array_filter(LIMITED_LEVELS, function($lvl) use ($unlockedLevels) {
+    return !empty($unlockedLevels[$lvl]);
+}, ARRAY_FILTER_USE_KEY));
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -204,6 +209,9 @@ foreach ([1, 2, 3, 4] as $lvl) {
                     <?php foreach([1, 2, 3, 4] as $i): ?>
                     <button onclick="showPage('test<?php echo $i; ?>')" class="w-28 sm:w-32 bg-white/5 hover:bg-white/10 border border-white/20 backdrop-blur-sm text-gray-200 hover:text-white py-4 rounded-md transition-all duration-300 tracking-widest font-light text-sm shadow-lg hover:shadow-white/10 hover:-translate-y-1">Level.<?php echo $i; ?></button>
                     <?php endforeach; ?>
+                    <?php foreach ($unlockedLimitedLevels as $i): ?>
+                    <button onclick="showPage('test<?php echo $i; ?>')" class="w-28 sm:w-32 bg-white/10 hover:bg-white/20 border border-white/30 backdrop-blur-sm text-gray-100 hover:text-white py-4 rounded-md transition-all duration-300 tracking-widest font-light text-sm shadow-lg hover:shadow-white/10 hover:-translate-y-1"><?php echo htmlspecialchars(getLimitedLevelLabel($i)); ?></button>
+                    <?php endforeach; ?>
                 </div>
 
                 <?php if (!empty($myLevelPasswords)): ?>
@@ -271,20 +279,27 @@ foreach ([1, 2, 3, 4] as $lvl) {
             </div>
         </section>
 
-        <?php foreach([1, 2, 3, 4] as $i): ?>
+        <?php foreach(array_merge([1, 2, 3, 4], array_keys(LIMITED_LEVELS)) as $i): ?>
             <?php
                 $imagePath = getImagePath((string)$i);
                 $isLocked = empty($unlockedLevels[$i]);
+                $isLimited = isLimitedLevel($i);
+                $levelTitle = $isLimited ? getLimitedLevelLabel($i) : 'Level.' . $i;
             ?>
 
             <section id="page-test<?php echo $i; ?>" class="page-content w-full max-w-2xl bg-black/30 backdrop-blur-xl p-8 md:p-12 rounded-lg border border-white/20 shadow-2xl text-left">
-                <h2 class="text-2xl md:text-3xl font-light mb-8 border-b border-white/30 pb-4 tracking-wider text-white">Level.<?php echo $i; ?></h2>
+                <h2 class="text-2xl md:text-3xl font-light mb-8 border-b border-white/30 pb-4 tracking-wider text-white"><?php echo htmlspecialchars($levelTitle); ?></h2>
 
                 <?php if ($isLocked): ?>
                     <?php if (!isset($_SESSION['user_id'])): ?>
                         <p class="text-gray-300 text-sm mb-6">このLevelを見るにはログインが必要です。</p>
                         <div class="text-center">
                             <a href="login.php" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 inline-block">LOGIN</a>
+                        </div>
+                    <?php elseif ($isLimited): ?>
+                        <p class="text-gray-300 text-sm mb-6">このLevelはダッシュボードでCODEを入力すると表示されます。</p>
+                        <div class="text-center">
+                            <a href="dashboard.php" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 inline-block">ダッシュボードへ</a>
                         </div>
                     <?php else: ?>
                         <?php if ($levelPasswordError && $activePage === 'test' . $i): ?>
@@ -552,7 +567,7 @@ setInterval(keepAlive, 5000);
             const onTimerIntervals = {};
             const csrfToken = <?php echo json_encode($csrfToken); ?>;
             const serverStartedAtMs = {
-                <?php foreach ([1,2,3,4] as $lvl): ?>
+                <?php foreach (array_merge([1,2,3,4], array_keys(LIMITED_LEVELS)) as $lvl): ?>
                 <?php echo $lvl; ?>: <?php echo $levelActivations[$lvl] ? (strtotime($levelActivations[$lvl]) * 1000) : 'null'; ?>,
                 <?php endforeach; ?>
             };
@@ -586,7 +601,7 @@ setInterval(keepAlive, 5000);
                 onTimerIntervals[level] = null;
             }
 
-            [1, 2, 3, 4].forEach(function(level) {
+            <?php echo json_encode(array_merge([1,2,3,4], array_keys(LIMITED_LEVELS))); ?>.forEach(function(level) {
                 if (serverStartedAtMs[level]) startTicking(level);
             });
 
@@ -619,7 +634,7 @@ setInterval(keepAlive, 5000);
 
             // フォアグラウンドに戻った瞬間、サーバーの最新状態と同期する（Cronによる自動終了の反映も兼ねる）
             function resyncWithServer() {
-                [1, 2, 3, 4].forEach(function(level) {
+                <?php echo json_encode(array_merge([1,2,3,4], array_keys(LIMITED_LEVELS))); ?>.forEach(function(level) {
                     const body = new URLSearchParams({ action: 'status', level: String(level), csrf_token: csrfToken });
                     fetch('toggle_level.php', { method: 'POST', body: body })
                         .then(function(res) { return res.json(); })
