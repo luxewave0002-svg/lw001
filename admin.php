@@ -977,9 +977,17 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
                 <?php foreach (array_merge([1, 2, 3, 4], array_keys(LIMITED_LEVELS)) as $i): ?>
-                    <?php $levelImagePath = getImagePath((string)$i); ?>
+                    <?php
+                        $levelImagePath = getImagePath((string)$i);
+                        $hasCustomUpload = count(glob("upload_test{$i}.*")) > 0;
+                    ?>
                     <div class="bg-black/30 border border-white/10 rounded-xl backdrop-blur-sm p-6 w-full <?php echo isLimitedLevel($i) ? 'ring-1 ring-white/20' : ''; ?>">
-                        <h3 class="text-lg tracking-wider mb-4"><?php echo htmlspecialchars(isLimitedLevel($i) ? getLimitedLevelLabel($i) : 'Level.' . $i); ?></h3>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg tracking-wider"><?php echo htmlspecialchars(isLimitedLevel($i) ? getLimitedLevelLabel($i) : 'Level.' . $i); ?></h3>
+                            <?php if (!$hasCustomUpload): ?>
+                                <span class="text-[10px] text-yellow-500/80 border border-yellow-500/30 rounded-full px-2 py-0.5 tracking-wider">初期状態（未アップロード）</span>
+                            <?php endif; ?>
+                        </div>
 
                         <div class="overflow-hidden rounded shadow-2xl bg-black flex justify-center items-center py-6 mb-4">
                             <?php if (isVideoFile($levelImagePath)): ?>
@@ -995,7 +1003,11 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
                             <input type="file" name="level_image" accept="image/*,video/*" class="text-xs text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-light file:bg-white/10 file:text-white hover:file:bg-white/20 w-full sm:w-auto cursor-pointer focus:outline-none">
                             <div class="flex gap-2 w-full sm:w-auto shrink-0">
                                 <button type="submit" name="action" value="upload_level_media" class="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded transition-colors w-full sm:w-auto tracking-widest font-light">UPLOAD</button>
+                                <?php if ($hasCustomUpload): ?>
                                 <button type="submit" name="action" value="delete_level_media" class="bg-red-900/30 hover:bg-red-800/50 text-red-200 border border-red-900/50 text-sm px-4 py-2 rounded transition-colors w-full sm:w-auto tracking-widest font-light" onclick="return confirm('<?php echo htmlspecialchars(isLimitedLevel($i) ? getLimitedLevelLabel($i) : 'Level.' . $i); ?> のメディアを削除して初期状態に戻しますか？');">DELETE</button>
+                                <?php else: ?>
+                                <button type="button" disabled class="bg-white/5 text-gray-600 border border-white/5 text-sm px-4 py-2 rounded w-full sm:w-auto tracking-widest font-light cursor-not-allowed">DELETE</button>
+                                <?php endif; ?>
                             </div>
                         </form>
                     </div>
