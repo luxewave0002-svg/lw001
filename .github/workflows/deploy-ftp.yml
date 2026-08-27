@@ -27,8 +27,5 @@ jobs:
             sessions/**
             luxe_wave.sqlite
             config.php
-            *.jpg
-            *.jpeg
-            *.gif
-            upload_test7.png
+            upload_test*.*
             .ftp-deploy-sync-state.json
