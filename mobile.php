@@ -130,6 +130,7 @@ requireLogin($pdo, 'mobile_login.php');
             <a href="mobile_about.php" class="bg-white/5 hover:bg-white/10 border border-white/20 text-gray-200 hover:text-white py-3.5 rounded-full tracking-widest text-sm transition-all">ABOUT</a>
             <a href="mobile_info.php" class="bg-white/5 hover:bg-white/10 border border-white/20 text-gray-200 hover:text-white py-3.5 rounded-full tracking-widest text-sm transition-all">INFO</a>
             <a href="smart_plugs.php" class="bg-white/5 hover:bg-white/10 border border-white/20 text-gray-200 hover:text-white py-3.5 rounded-full tracking-widest text-sm transition-all">SMART PLUGS</a>
+            <a href="https://l-wv1.vercel.app/login" target="_blank" rel="noopener noreferrer" class="bg-white/5 hover:bg-white/10 border border-white/20 text-gray-200 hover:text-white py-3.5 rounded-full tracking-widest text-sm transition-all">POINT</a>
 
             <?php if(isset($_SESSION['user_id'])): ?>
                 <a href="dashboard.php" class="bg-white/10 hover:bg-white/20 border border-white/30 text-white py-3.5 rounded-full tracking-widest text-sm transition-all shadow-lg">DASHBOARD</a>

@@ -188,6 +188,7 @@ $unlockedLimitedLevels = array_keys(array_filter(LIMITED_LEVELS, function($lvl) 
             <button onclick="showPage('about')" class="hover:text-white transition-colors duration-300 focus:outline-none">About</button>
             <button onclick="showPage('info')" class="hover:text-white transition-colors duration-300 focus:outline-none">Info</button>
             <a href="smart_plugs.php" class="hover:text-white transition-colors duration-300 focus:outline-none">Smart Plugs</a>
+            <a href="https://l-wv1.vercel.app/login" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors duration-300 focus:outline-none">Point</a>
             <?php if(isset($_SESSION['user_id'])): ?>
             <a href="dashboard.php" class="hover:text-white transition-colors duration-300 focus:outline-none">Dashboard</a>
             <a href="?logout=1" onclick="[1,2,3,4].forEach(function(l){sessionStorage.removeItem('lw_level_on_since_'+l);})" class="hover:text-white transition-colors duration-300 focus:outline-none">Logout</a>
