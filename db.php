@@ -518,6 +518,16 @@ function requireLogin($pdo, $redirectTo = 'login.php') {
 function logoutUser($pdo) {
     global $isSecure;
 
+    // ON中の「技術発生」（通常Level・Limitedレベル問わず）を全て自動OFFにし、履歴に残す
+    if (isset($_SESSION['user_id'])) {
+        $userId = $_SESSION['user_id'];
+        $activeStmt = $pdo->prepare("SELECT level FROM level_activation WHERE user_id = ? AND started_at IS NOT NULL");
+        $activeStmt->execute([$userId]);
+        foreach ($activeStmt->fetchAll(PDO::FETCH_COLUMN) as $activeLevel) {
+            stopLevelActivation($pdo, $userId, $activeLevel, 'logout');
+        }
+    }
+
     if (!empty($_COOKIE['lw_remember'])) {
         $parts = explode(':', $_COOKIE['lw_remember'], 2);
         if (count($parts) === 2) {

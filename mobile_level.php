@@ -263,13 +263,15 @@ $imagePath = getImagePath((string)$level);
                         $durationSec = max(0, $endTs - $startTs);
                         $durStr = sprintf('%02d:%02d:%02d', intdiv($durationSec, 3600), intdiv($durationSec % 3600, 60), $durationSec % 60);
                         $dateStr = date('n/j H:i', $startTs);
-                        $isTimeout = $entry['ended_reason'] === 'timeout';
+                        $endedReason = $entry['ended_reason'];
                     ?>
                         <div class="flex items-center justify-between gap-2 bg-black/20 px-2.5 py-1.5 rounded">
                             <span><?php echo htmlspecialchars($dateStr); ?></span>
                             <span class="font-mono"><?php echo htmlspecialchars($durStr); ?></span>
-                            <?php if ($isTimeout): ?>
+                            <?php if ($endedReason === 'timeout'): ?>
                                 <span class="text-yellow-400">自動終了(24h)</span>
+                            <?php elseif ($endedReason === 'logout'): ?>
+                                <span class="text-blue-400">ログアウトで終了</span>
                             <?php else: ?>
                                 <span class="text-gray-500">手動OFF</span>
                             <?php endif; ?>
