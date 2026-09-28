@@ -33,7 +33,10 @@ if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $token = $_POST['csrf_token'] ?? '';
         if (!verifyCsrfToken($token)) {
-            die('CSRF token validation failed. 不正なリクエストです。');
+            // セッションが切れた状態でのPOST（例: アップロード中にセッションが失効し、ログイン試行と
+            // 誤認識されるケース）を不正リクエストとして強制終了せず、ログイン画面へ静かに戻す
+            header("Location: admin.php");
+            exit;
         }
         
         $email = $_POST['admin_email'] ?? '';
@@ -103,7 +106,10 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $token = $_POST['csrf_token'] ?? '';
         if (!verifyCsrfToken($token)) {
-            die('CSRF token validation failed. 不正なリクエストです。');
+            // トークン不一致（タブを開きっぱなしにした後の古いフォーム送信等）でも
+            // 作業中のデータを失ったと誤解させないよう、強制終了せず管理画面へ戻す
+            header("Location: admin.php");
+            exit;
         }
     }
 
