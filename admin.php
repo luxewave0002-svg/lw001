@@ -3,7 +3,7 @@ require_once 'db.php';
 require_once 'config.php';
 
 // admin.php の更新バージョン（画面右下に表示。変更を加えるたびに更新すること）
-define('ADMIN_PAGE_VERSION', '2026.09.30.2');
+define('ADMIN_PAGE_VERSION', '2026.09.30.3');
 
 $error = '';
 $message = '';
@@ -595,6 +595,7 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - LUXE WAVE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
