@@ -3,7 +3,7 @@ require_once 'db.php';
 require_once 'config.php';
 
 // admin.php の更新バージョン（画面右下に表示。変更を加えるたびに更新すること）
-define('ADMIN_PAGE_VERSION', '2026.09.30.1');
+define('ADMIN_PAGE_VERSION', '2026.09.30.2');
 
 $error = '';
 $message = '';
@@ -1296,8 +1296,8 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
     })();
 </script>
 
-<!-- 画面右下: バージョン表記（常時）＋スマホ幅で見ている時だけ「Smartphone ver」を表示 -->
-<div class="fixed bottom-2 right-3 z-50 flex items-center gap-2 text-[10px] text-gray-500 tracking-wider pointer-events-none select-none">
+<!-- 画面右下: バージョン表記（常時）＋スマホ幅で見ている時だけ真上に「Smartphone ver」を表示 -->
+<div class="fixed bottom-2 right-3 z-50 flex flex-col items-end gap-1 text-[10px] text-gray-500 tracking-wider pointer-events-none select-none">
     <span class="sm:hidden bg-black/40 border border-white/10 rounded px-2 py-0.5 backdrop-blur-sm">Smartphone ver</span>
     <span>v<?php echo htmlspecialchars(ADMIN_PAGE_VERSION); ?></span>
 </div>
