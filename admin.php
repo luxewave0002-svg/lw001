@@ -7,6 +7,13 @@ $message = '';
 $message_class = '';
 $admin_login_success = false;
 
+// セッション切れ等でCSRF検証に失敗し、ログイン画面（またはダッシュボード）へ戻された場合の案内
+if (isset($_GET['session_expired'])) {
+    $error = 'セッションが切れたため、操作前の状態に戻りました。お手数ですが、もう一度ログイン・操作をやり直してください。';
+    $message = 'セッションが切れたため、直前の操作（アップロード等）は反映されていません。もう一度お試しください。';
+    $message_class = 'error';
+}
+
 $csrfToken = generateCsrfToken();
 
 // 管理者設定の取得
@@ -34,8 +41,8 @@ if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
         $token = $_POST['csrf_token'] ?? '';
         if (!verifyCsrfToken($token)) {
             // セッションが切れた状態でのPOST（例: アップロード中にセッションが失効し、ログイン試行と
-            // 誤認識されるケース）を不正リクエストとして強制終了せず、ログイン画面へ静かに戻す
-            header("Location: admin.php");
+            // 誤認識されるケース）を不正リクエストとして強制終了せず、案内を出してログイン画面へ戻す
+            header("Location: admin.php?session_expired=1");
             exit;
         }
         
@@ -107,8 +114,8 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
         $token = $_POST['csrf_token'] ?? '';
         if (!verifyCsrfToken($token)) {
             // トークン不一致（タブを開きっぱなしにした後の古いフォーム送信等）でも
-            // 作業中のデータを失ったと誤解させないよう、強制終了せず管理画面へ戻す
-            header("Location: admin.php");
+            // 作業中のデータを失ったと誤解させないよう、強制終了せず案内を出して管理画面へ戻す
+            header("Location: admin.php?session_expired=1");
             exit;
         }
     }

@@ -75,7 +75,23 @@
 3. 検証内容（`php -l` の結果、pushの成否）
 4. 未確認・要フォローアップの点があれば明記
 
+## Known Recurring Patterns
+- **セッション切れ時のCSRF誤判定**: PHPセッションが（特にiOSの長時間バックグラウンド等で）失効した状態で
+  フォームPOSTすると、CSRF検証が「不正リクエスト」として扱われる。`mobile_level.php`/`index.php`の
+  Level解除フォームで先に発覚・修正し、後から`admin.php`のログイン・全操作フォームでも同型のバグが見つかった。
+  修正パターン: `die()`で強制終了せず、`header("Location: ...?session_expired=1")`で戻し、
+  案内メッセージを表示する。**新しくPOSTフォームを追加する際は、同じ死角がないか確認すること。**
+- Level/Limitedのアップロード済みメディア（`upload_test*.*`）や `sessions/`, `config.php`,
+  `luxe_wave.sqlite` など「Git管理外だがサーバーに必要なファイル」を追加した場合、
+  `deploy-ftp.yml` のexclude設定に入れ忘れると次回pushで消える。新しい非Git管理ファイルを
+  サーバーに置く際は、必ずexclude設定を確認・追加する。
+
+## Change Log
+- 2026-09-26: `admin.php` のCSRF検証失敗時の挙動を `die()` → 案内メッセージ付きリダイレクトに変更
+  （セッション切れ時にアップロード等の操作が無反応に見える問題への対応）
+
 ## Maintenance
 - 同じ理由で2回説明した内容は、このファイルに1行で追記する
 - 陳腐化した記述（廃止した機能、変更済みの仕様）は削除する
 - 200行を超えたら、テーマ別に分割を検討する
+- Change Logは直近のものだけ残し、古いものはKnown Recurring Patternsへ要約統合するか削除する
