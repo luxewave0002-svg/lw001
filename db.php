@@ -177,6 +177,15 @@ try {
         $pdo->exec("ALTER TABLE logs ADD COLUMN ip_address TEXT");
     }
 
+    // logsテーブルに user_agent カラムがない場合は自動追加する（端末・ブラウザの特定用）
+    $hasUserAgent = false;
+    foreach ($columns as $col) {
+        if ($col['name'] === 'user_agent') $hasUserAgent = true;
+    }
+    if (!$hasUserAgent && count($columns) > 0) {
+        $pdo->exec("ALTER TABLE logs ADD COLUMN user_agent TEXT");
+    }
+
     // 設定テーブルの作成
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS settings (
@@ -502,8 +511,14 @@ function writeLog($pdo, $userId, $action, $details) {
         $ipAddress = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
     }
 
-    $stmt = $pdo->prepare("INSERT INTO logs (user_id, action, details, created_at, ip_address) VALUES (?, ?, ?, ?, ?)");
-    $stmt->execute([$userId, $action, $details, $now, $ipAddress]);
+    // 端末・ブラウザの特定用（不具合の環境再現に利用する）
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+    if ($userAgent !== null && mb_strlen($userAgent) > 500) {
+        $userAgent = mb_substr($userAgent, 0, 500); // 異常に長いUAで肥大化しないよう安全のため切り詰め
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO logs (user_id, action, details, created_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$userId, $action, $details, $now, $ipAddress, $userAgent]);
 }
 
 // ログイン必須ページ用のガード関数（未ログインなら指定ページへリダイレクト）

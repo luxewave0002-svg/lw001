@@ -483,7 +483,7 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
     // CSVエクスポート処理
     if (isset($_GET['export_csv']) && $_GET['export_csv'] == '1') {
         $stmt = $pdo->query("
-            SELECT logs.created_at, users.email, logs.action, logs.details, logs.ip_address 
+            SELECT logs.created_at, users.email, logs.action, logs.details, logs.ip_address, logs.user_agent 
             FROM logs 
             LEFT JOIN users ON logs.user_id = users.id 
             ORDER BY logs.created_at DESC
@@ -497,10 +497,10 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
         // Excelでの文字化け防止用BOMを出力
         fputs($output, "\xEF\xBB\xBF");
 
-        fputcsv($output, ['Time', 'User', 'Action', 'Details', 'IP Address']);
+        fputcsv($output, ['Time', 'User', 'Action', 'Details', 'IP Address', 'User Agent']);
         foreach ($exportLogs as $log) {
             $email = $log['email'] ? $log['email'] : 'Guest / System';
-            fputcsv($output, [$log['created_at'], $email, $log['action'], $log['details'], $log['ip_address']]);
+            fputcsv($output, [$log['created_at'], $email, $log['action'], $log['details'], $log['ip_address'], $log['user_agent']]);
         }
         fclose($output);
         exit;
@@ -572,11 +572,11 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
             SELECT logs.*, users.email 
             FROM logs 
             LEFT JOIN users ON logs.user_id = users.id 
-            WHERE logs.action LIKE ? OR logs.details LIKE ? OR users.email LIKE ? OR logs.ip_address LIKE ?
+            WHERE logs.action LIKE ? OR logs.details LIKE ? OR users.email LIKE ? OR logs.ip_address LIKE ? OR logs.user_agent LIKE ?
             ORDER BY logs.created_at DESC LIMIT 100
         ");
         $likeQuery = '%' . $logSearchQuery . '%';
-        $logStmt->execute([$likeQuery, $likeQuery, $likeQuery, $likeQuery]);
+        $logStmt->execute([$likeQuery, $likeQuery, $likeQuery, $likeQuery, $likeQuery]);
     } else {
         $logStmt = $pdo->query("
             SELECT logs.*, users.email 
@@ -953,6 +953,7 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
                                 <th class="p-4 font-medium text-gray-300">Action</th>
                                 <th class="p-4 font-medium text-gray-300">Details</th>
                                 <th class="p-4 font-medium text-gray-300">IP Address</th>
+                                <th class="p-4 font-medium text-gray-300">User Agent</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -971,11 +972,12 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
                                     </td>
                                     <td class="p-4 text-gray-400 break-all text-xs"><?php echo htmlspecialchars($log['details']); ?></td>
                                     <td class="p-4 text-gray-500 font-mono text-[10px] whitespace-nowrap"><?php echo htmlspecialchars($log['ip_address'] ?? '-'); ?></td>
+                                    <td class="p-4 text-gray-500 font-mono text-[10px] break-all max-w-xs"><?php echo htmlspecialchars($log['user_agent'] ?? '-'); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (empty($logs)): ?>
                                 <tr>
-                                    <td colspan="5" class="p-4 text-center text-sm text-gray-500">ログはまだありません。</td>
+                                    <td colspan="6" class="p-4 text-center text-sm text-gray-500">ログはまだありません。</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
