@@ -656,7 +656,7 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
 
     <canvas id="waveCanvas" class="fixed top-0 left-0 w-full h-full z-[-1] pointer-events-none"></canvas>
 
-    <div class="max-w-4xl mx-auto p-6">
+    <div class="max-w-4xl mx-auto p-3 sm:p-6">
         <?php if ((!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) || $admin_login_success): ?>
             <!-- 管理者ログインフォーム -->
             <div class="flex items-center justify-center min-h-[80vh]">
@@ -765,23 +765,23 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
             </div>
 
             <div class="bg-black/30 border border-white/10 rounded-xl backdrop-blur-sm overflow-x-auto w-full">
-                <table class="w-full text-left border-collapse min-w-[600px]">
+                <table class="w-full text-left border-collapse min-w-[520px]">
                     <thead>
                         <tr class="bg-white/10 border-b border-white/10 text-sm tracking-wider">
-                            <th class="p-4 font-medium text-gray-300">ID</th>
-                            <th class="p-4 font-medium text-gray-300">Email</th>
-                            <th class="p-4 font-medium text-gray-300">Nickname</th>
-                            <th class="p-4 font-medium text-gray-300">Registered Devices</th>
-                            <th class="p-4 font-medium text-gray-300">Last Login</th>
-                            <th class="p-4 font-medium text-gray-300 text-right">Actions</th>
+                            <th class="p-2 sm:p-4 font-medium text-gray-300">ID</th>
+                            <th class="p-2 sm:p-4 font-medium text-gray-300">Email</th>
+                            <th class="p-2 sm:p-4 font-medium text-gray-300">Nickname</th>
+                            <th class="p-2 sm:p-4 font-medium text-gray-300">Registered Devices</th>
+                            <th class="p-2 sm:p-4 font-medium text-gray-300">Last Login</th>
+                            <th class="p-2 sm:p-4 font-medium text-gray-300 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($users as $user): ?>
                             <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                <td class="p-4 text-gray-400">#<?php echo htmlspecialchars($user['id']); ?></td>
-                                <td class="p-4 text-gray-200"><?php echo htmlspecialchars($user['email']); ?></td>
-                                <td class="p-4">
+                                <td class="p-2 sm:p-4 text-gray-400">#<?php echo htmlspecialchars($user['id']); ?></td>
+                                <td class="p-2 sm:p-4 text-gray-200"><?php echo htmlspecialchars($user['email']); ?></td>
+                                <td class="p-2 sm:p-4">
                                     <form method="POST" class="flex items-center gap-1.5">
                                         <input type="hidden" name="action" value="update_nickname">
                                         <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($user['id']); ?>">
@@ -790,9 +790,9 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
                                         <button type="submit" class="text-xs text-gray-400 hover:text-white border border-white/20 rounded px-2 py-1 transition-colors whitespace-nowrap">保存</button>
                                     </form>
                                 </td>
-                                <td class="p-4 text-gray-400"><?php echo htmlspecialchars($user['device_count']); ?> Devices</td>
-                                <td class="p-4 text-gray-500 text-xs whitespace-nowrap"><?php echo htmlspecialchars($user['last_login']); ?></td>
-                                <td class="p-4 text-right whitespace-nowrap">
+                                <td class="p-2 sm:p-4 text-gray-400"><?php echo htmlspecialchars($user['device_count']); ?> Devices</td>
+                                <td class="p-2 sm:p-4 text-gray-500 text-xs whitespace-nowrap"><?php echo htmlspecialchars($user['last_login']); ?></td>
+                                <td class="p-2 sm:p-4 text-right whitespace-nowrap">
                                     <form method="POST" onsubmit="return confirm('このユーザーのパスワードをリセットしますか？\n新しいパスワードが自動生成されます。');" class="inline-block mr-2">
                                         <input type="hidden" name="action" value="reset_password">
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
@@ -945,34 +945,34 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
             </div>
             <div class="bg-black/30 border border-white/10 rounded-xl backdrop-blur-sm overflow-hidden mb-12 w-full">
                 <div class="max-h-96 overflow-y-auto overflow-x-auto w-full">
-                    <table class="w-full text-left border-collapse text-sm min-w-[600px]">
+                    <table class="w-full text-left border-collapse text-sm min-w-[520px]">
                         <thead>
                             <tr class="bg-white/10 border-b border-white/10 tracking-wider sticky top-0 backdrop-blur-md">
-                                <th class="p-4 font-medium text-gray-300">Time</th>
-                                <th class="p-4 font-medium text-gray-300">User</th>
-                                <th class="p-4 font-medium text-gray-300">Action</th>
-                                <th class="p-4 font-medium text-gray-300">Details</th>
-                                <th class="p-4 font-medium text-gray-300">IP Address</th>
-                                <th class="p-4 font-medium text-gray-300">User Agent</th>
+                                <th class="p-2 sm:p-4 font-medium text-gray-300">Time</th>
+                                <th class="p-2 sm:p-4 font-medium text-gray-300">User</th>
+                                <th class="p-2 sm:p-4 font-medium text-gray-300">Action</th>
+                                <th class="p-2 sm:p-4 font-medium text-gray-300">Details</th>
+                                <th class="p-2 sm:p-4 font-medium text-gray-300">IP Address</th>
+                                <th class="p-2 sm:p-4 font-medium text-gray-300">User Agent</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($logs as $log): ?>
                                 <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                    <td class="p-4 text-gray-400 whitespace-nowrap"><?php echo htmlspecialchars($log['created_at']); ?></td>
-                                    <td class="p-4">
+                                    <td class="p-2 sm:p-4 text-gray-400 whitespace-nowrap"><?php echo htmlspecialchars($log['created_at']); ?></td>
+                                    <td class="p-2 sm:p-4">
                                         <?php if ($log['email']): ?>
                                             <span class="text-blue-300 font-medium"><?php echo htmlspecialchars($log['email']); ?></span>
                                         <?php else: ?>
                                             <span class="text-gray-500 italic">Guest / System</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="p-4 text-gray-300">
+                                    <td class="p-2 sm:p-4 text-gray-300">
                                         <span class="bg-white/10 px-2 py-1 rounded text-[10px] tracking-widest uppercase"><?php echo htmlspecialchars($log['action']); ?></span>
                                     </td>
-                                    <td class="p-4 text-gray-400 break-all text-xs"><?php echo htmlspecialchars($log['details']); ?></td>
-                                    <td class="p-4 text-gray-500 font-mono text-[10px] whitespace-nowrap"><?php echo htmlspecialchars($log['ip_address'] ?? '-'); ?></td>
-                                    <td class="p-4 text-gray-500 font-mono text-[10px] break-all max-w-xs"><?php echo htmlspecialchars($log['user_agent'] ?? '-'); ?></td>
+                                    <td class="p-2 sm:p-4 text-gray-400 break-all text-xs"><?php echo htmlspecialchars($log['details']); ?></td>
+                                    <td class="p-2 sm:p-4 text-gray-500 font-mono text-[10px] whitespace-nowrap"><?php echo htmlspecialchars($log['ip_address'] ?? '-'); ?></td>
+                                    <td class="p-2 sm:p-4 text-gray-500 font-mono text-[10px] break-all max-w-xs"><?php echo htmlspecialchars($log['user_agent'] ?? '-'); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (empty($logs)): ?>
