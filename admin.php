@@ -3,7 +3,28 @@ require_once 'db.php';
 require_once 'config.php';
 
 // admin.php の更新バージョン（画面右下に表示。変更を加えるたびに更新すること）
-define('ADMIN_PAGE_VERSION', '2026.09.30.3');
+define('ADMIN_PAGE_VERSION', '2026.09.30.4');
+
+// Safariが古いフォーム（古いCSRFトークン入り）をキャッシュから復元しないよう、管理画面はキャッシュさせない
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
+// CSRF検証失敗の理由を判定してログに残し、理由コード付きでリダイレクトする（原因切り分け用）
+function adminCsrfFailRedirect($pdo) {
+    $contentLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+    if ($contentLength > 0 && empty($_POST) && empty($_FILES)) {
+        $reason = 'POST_EMPTY'; // 送信データがPHPに届いていない（途中切断・サイズ超過など）
+    } elseif (!isset($_POST['csrf_token']) || $_POST['csrf_token'] === '') {
+        $reason = 'TOKEN_MISSING';
+    } else {
+        $reason = 'TOKEN_MISMATCH'; // 古いページ（別セッションのトークン）から送信された
+    }
+    writeLog($pdo, $_SESSION['user_id'] ?? null, 'csrf_fail',
+        "reason={$reason} content_length={$contentLength} post_keys=" . count($_POST) . " files=" . count($_FILES)
+        . " action=" . ($_POST['action'] ?? '-'));
+    header("Location: admin.php?session_expired=1&reason=" . $reason);
+    exit;
+}
 
 $error = '';
 $message = '';
@@ -13,7 +34,8 @@ $admin_login_success = false;
 // セッション切れ等でCSRF検証に失敗し、ログイン画面（またはダッシュボード）へ戻された場合の案内
 if (isset($_GET['session_expired'])) {
     $error = 'セッションが切れたため、操作前の状態に戻りました。お手数ですが、もう一度ログイン・操作をやり直してください。';
-    $message = 'セッションが切れたため、直前の操作（アップロード等）は反映されていません。もう一度お試しください。';
+    $reasonCode = preg_replace('/[^A-Z_]/', '', $_GET['reason'] ?? 'UNKNOWN');
+    $message = 'セッションが切れたため、直前の操作（アップロード等）は反映されていません。もう一度お試しください。（コード: E-' . $reasonCode . '）';
     $message_class = 'error';
 }
 
@@ -45,8 +67,7 @@ if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
         if (!verifyCsrfToken($token)) {
             // セッションが切れた状態でのPOST（例: アップロード中にセッションが失効し、ログイン試行と
             // 誤認識されるケース）を不正リクエストとして強制終了せず、案内を出してログイン画面へ戻す
-            header("Location: admin.php?session_expired=1");
-            exit;
+            adminCsrfFailRedirect($pdo);
         }
         
         $email = $_POST['admin_email'] ?? '';
@@ -118,8 +139,7 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
         if (!verifyCsrfToken($token)) {
             // トークン不一致（タブを開きっぱなしにした後の古いフォーム送信等）でも
             // 作業中のデータを失ったと誤解させないよう、強制終了せず案内を出して管理画面へ戻す
-            header("Location: admin.php?session_expired=1");
-            exit;
+            adminCsrfFailRedirect($pdo);
         }
     }
 
