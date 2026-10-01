@@ -494,12 +494,12 @@ $imagePath = getImagePath((string)$level);
         setInterval(keepAlive, 5000);
     </script>
 <script>
+    // Service Workerは使用しない。過去に登録された端末のSWが残っていれば解除する
+    // （iOS 26.5系でSW管理下のページのファイル送信が空ボディになる不具合の回避）
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-            navigator.serviceWorker.register('sw.js').catch(function(err) {
-                console.error('SW registration failed:', err);
-            });
-        });
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+        }).catch(function() {});
     }
 </script>
 

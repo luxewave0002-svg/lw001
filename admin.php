@@ -3,7 +3,7 @@ require_once 'db.php';
 require_once 'config.php';
 
 // admin.php の更新バージョン（画面右下に表示。変更を加えるたびに更新すること）
-define('ADMIN_PAGE_VERSION', '2026.09.30.4');
+define('ADMIN_PAGE_VERSION', '2026.10.01.1');
 
 // Safariが古いフォーム（古いCSRFトークン入り）をキャッシュから復元しないよう、管理画面はキャッシュさせない
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -12,8 +12,10 @@ header('Pragma: no-cache');
 // CSRF検証失敗の理由を判定してログに残し、理由コード付きでリダイレクトする（原因切り分け用）
 function adminCsrfFailRedirect($pdo) {
     $contentLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
-    if ($contentLength > 0 && empty($_POST) && empty($_FILES)) {
-        $reason = 'POST_EMPTY'; // 送信データがPHPに届いていない（途中切断・サイズ超過など）
+    if (empty($_POST) && empty($_FILES)) {
+        // 送信データがPHPに届いていない（Content-Length: 0 の空送信、途中切断、サイズ超過など）
+        // content_length をログに残すので、0なら「ブラウザが空で送信」、>0なら「届く前に破棄」と区別できる
+        $reason = 'POST_EMPTY';
     } elseif (!isset($_POST['csrf_token']) || $_POST['csrf_token'] === '') {
         $reason = 'TOKEN_MISSING';
     } else {
@@ -1315,6 +1317,16 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
             if (document.visibilityState === 'visible') tryPlay();
         });
     })();
+</script>
+
+
+<script>
+    // Service Workerは使用しない。端末に残っているSWがあれば解除する（iOS 26.5系の空ボディ送信不具合の回避）
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+        }).catch(function() {});
+    }
 </script>
 
 <!-- 画面右下: バージョン表記（常時）＋スマホ幅で見ている時だけ真上に「Smartphone ver」を表示 -->
