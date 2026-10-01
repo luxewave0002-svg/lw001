@@ -3,7 +3,29 @@ require_once 'db.php';
 require_once 'config.php';
 
 // admin.php の更新バージョン（画面右下に表示。変更を加えるたびに更新すること）
-define('ADMIN_PAGE_VERSION', '2026.10.01.1');
+define('ADMIN_PAGE_VERSION', '2026.10.01.2');
+
+// User-Agent文字列を「iPhone · Safari 26.6.2」のような短い表記に変換する（ログ一覧の見やすさ向上用）
+function adminShortUserAgent($ua) {
+    if (!$ua) return '-';
+    if (stripos($ua, 'iPad') !== false) $device = 'iPad';
+    elseif (stripos($ua, 'iPhone') !== false) $device = 'iPhone';
+    elseif (stripos($ua, 'Android') !== false) $device = 'Android';
+    elseif (stripos($ua, 'Windows') !== false) $device = 'Windows';
+    elseif (stripos($ua, 'Macintosh') !== false) $device = 'Mac';
+    elseif (stripos($ua, 'Linux') !== false) $device = 'Linux';
+    else $device = null;
+
+    $browser = null;
+    if (preg_match('/(?:CriOS|Chrome)\/(\d+)/', $ua, $m) && stripos($ua, 'Edg') === false) $browser = 'Chrome ' . $m[1];
+    elseif (preg_match('/Edg(?:A|iOS)?\/(\d+)/', $ua, $m)) $browser = 'Edge ' . $m[1];
+    elseif (preg_match('/(?:FxiOS|Firefox)\/(\d+)/', $ua, $m)) $browser = 'Firefox ' . $m[1];
+    elseif (preg_match('/Version\/([\d.]+).*Safari/', $ua, $m)) $browser = 'Safari ' . $m[1];
+
+    $parts = array_filter([$device, $browser]);
+    return $parts ? implode(' · ', $parts) : substr($ua, 0, 40);
+}
+
 
 // Safariが古いフォーム（古いCSRFトークン入り）をキャッシュから復元しないよう、管理画面はキャッシュさせない
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -646,6 +668,10 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
             0% { opacity: 1; transform: scale(1); filter: blur(0); }
             100% { opacity: 0; transform: scale(1.05); filter: blur(8px); }
         }
+        /* ログ一覧（スマホ用アコーディオン）: 既定の三角を消し、開閉でシェブロンを回転 */
+        details.log-item > summary { list-style: none; }
+        details.log-item > summary::-webkit-details-marker { display: none; }
+        details.log-item[open] .log-chevron { transform: rotate(180deg); }
         .animate-fade-out {
             animation: fadeOutScale 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
             pointer-events: none;
@@ -970,10 +996,39 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
                 </div>
             </div>
             <div class="bg-black/30 border border-white/10 rounded-xl backdrop-blur-sm overflow-hidden mb-12 w-full">
-                <div class="max-h-96 overflow-y-auto overflow-x-auto w-full">
+                <!-- スマホ幅: 1行の概要（日時・アクション・ユーザー）をタップで詳細が開くリスト -->
+                <div class="sm:hidden max-h-[28rem] overflow-y-auto w-full">
+                    <?php foreach ($logs as $log): ?>
+                        <details class="log-item border-b border-white/5">
+                            <summary class="flex items-center gap-2 px-3 py-2.5 cursor-pointer text-xs">
+                                <span class="text-gray-400 whitespace-nowrap font-mono"><?php echo htmlspecialchars(substr($log['created_at'], 5, 11)); ?></span>
+                                <span class="bg-white/10 px-1.5 py-0.5 rounded text-[10px] tracking-wider uppercase whitespace-nowrap"><?php echo htmlspecialchars($log['action']); ?></span>
+                                <span class="flex-1 truncate <?php echo $log['email'] ? 'text-blue-300' : 'text-gray-500 italic'; ?>"><?php echo htmlspecialchars($log['email'] ?: 'Guest / System'); ?></span>
+                                <span class="log-chevron text-gray-500 transition-transform duration-200">▾</span>
+                            </summary>
+                            <div class="px-3 pb-3 text-xs text-gray-300 space-y-2">
+                                <div><span class="text-gray-500">Time</span><br><?php echo htmlspecialchars($log['created_at']); ?></div>
+                                <div><span class="text-gray-500">Details</span><br><span class="break-all"><?php echo htmlspecialchars($log['details'] ?? '-'); ?></span></div>
+                                <div><span class="text-gray-500">IP</span><br><span class="font-mono"><?php echo htmlspecialchars($log['ip_address'] ?? '-'); ?></span></div>
+                                <div><span class="text-gray-500">端末</span><br>
+                                    <?php echo htmlspecialchars(adminShortUserAgent($log['user_agent'] ?? null)); ?>
+                                    <?php if (!empty($log['user_agent'])): ?>
+                                        <div class="mt-1 font-mono text-[10px] text-gray-500 break-all"><?php echo htmlspecialchars($log['user_agent']); ?></div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </details>
+                    <?php endforeach; ?>
+                    <?php if (empty($logs)): ?>
+                        <p class="p-4 text-center text-sm text-gray-500">ログはまだありません。</p>
+                    <?php endif; ?>
+                </div>
+
+                <!-- PC幅: 従来のテーブル表示 -->
+                <div class="hidden sm:block max-h-96 overflow-y-auto overflow-x-auto w-full">
                     <table class="w-full text-left border-collapse text-sm min-w-[520px]">
                         <thead>
-                            <tr class="bg-white/10 border-b border-white/10 tracking-wider sticky top-0 backdrop-blur-md">
+                            <tr class="bg-slate-800 border-b border-white/10 tracking-wider sticky top-0 z-10">
                                 <th class="p-2 sm:p-4 font-medium text-gray-300">Time</th>
                                 <th class="p-2 sm:p-4 font-medium text-gray-300">User</th>
                                 <th class="p-2 sm:p-4 font-medium text-gray-300">Action</th>
@@ -998,7 +1053,7 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
                                     </td>
                                     <td class="p-2 sm:p-4 text-gray-400 break-all text-xs"><?php echo htmlspecialchars($log['details']); ?></td>
                                     <td class="p-2 sm:p-4 text-gray-500 font-mono text-[10px] whitespace-nowrap"><?php echo htmlspecialchars($log['ip_address'] ?? '-'); ?></td>
-                                    <td class="p-2 sm:p-4 text-gray-500 font-mono text-[10px] break-all max-w-xs"><?php echo htmlspecialchars($log['user_agent'] ?? '-'); ?></td>
+                                    <td class="p-2 sm:p-4 text-gray-500 font-mono text-[10px] max-w-xs" title="<?php echo htmlspecialchars($log['user_agent'] ?? ''); ?>"><?php echo htmlspecialchars(adminShortUserAgent($log['user_agent'] ?? null)); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (empty($logs)): ?>
