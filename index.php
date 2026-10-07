@@ -334,7 +334,7 @@ $unlockedLimitedLevels = array_keys(array_filter(LIMITED_LEVELS, function($lvl) 
                             <button type="submit" class="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded transition-colors tracking-widest font-light">UNLOCK</button>
                         </form>
                         <div class="mt-10 text-center">
-                            <button onclick="showPage('home')" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 focus:outline-none">BACK TO HOME</button>
+                            <button onclick="showPage('home')" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 focus:outline-none">BACK</button>
                         </div>
                     <?php endif; ?>
                 <?php else: ?>
@@ -369,7 +369,7 @@ $unlockedLimitedLevels = array_keys(array_filter(LIMITED_LEVELS, function($lvl) 
                     </div>
 
                     <div class="mt-10 text-center">
-                        <button onclick="showPage('home')" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 focus:outline-none">BACK TO HOME</button>
+                        <button onclick="showPage('home')" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 focus:outline-none">BACK</button>
                     </div>
 
                     <div class="mt-10 pt-6 border-t border-white/10 text-left max-w-xs mx-auto">

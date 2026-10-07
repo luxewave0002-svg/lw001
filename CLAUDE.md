@@ -112,6 +112,7 @@
   管理者ログイン(admin.php)は対象外。
 - 2026-10-07: Level.1のみテスト実装：技術発生ON中は level_sound.m4a をループ再生（level_sound.js、mobile_level.php/index.php）。OFF中は従来の無音ループ。
   iOS実機での再生・ループ継ぎ目は未検証。
+- 2026-10-08: Level.1の動画をループ再生＋音量ボタンのみ表示。mobile_level.phpにBACKボタン追加、index.phpのLevelページ「BACK TO HOME」を「BACK」に変更。
 
 ## Maintenance
 - 同じ理由で2回説明した内容は、このファイルに1行で追記する
