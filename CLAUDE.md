@@ -114,6 +114,7 @@
   iOS実機での再生・ループ継ぎ目は未検証。
 - 2026-10-08: Level.1の動画をループ再生＋音量ボタンのみ表示。mobile_level.phpにBACKボタン追加、index.phpのLevelページ「BACK TO HOME」を「BACK」に変更。
 - 2026-10-08: admin.php Activity Logsを50件ずつのページ送り（log_page）に変更。SEARCH/クリア/ページ移動後も #activity-logs の位置に留まる。
+- 2026-10-08: Level.1の音源ループをWeb Audioのバッファループに変更（継ぎ目対策。非対応/読込前は<audio loop>にフォールバック）。実機での継ぎ目は未検証。
 
 ## Maintenance
 - 同じ理由で2回説明した内容は、このファイルに1行で追記する

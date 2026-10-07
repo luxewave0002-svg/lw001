@@ -542,7 +542,7 @@ $imagePath = getImagePath((string)$level);
     })();
 </script>
 <?php if ((int)$level === 1 && !$isLocked): ?>
-<script src="level_sound.js?v=2"></script>
+<script src="level_sound.js?v=3"></script>
 <script>if (window.lwLevelSound) window.lwLevelSound.set(<?php echo $activationStartedAt ? 'true' : 'false'; ?>);</script>
 <?php endif; ?>
 </body>

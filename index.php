@@ -710,7 +710,7 @@ setInterval(keepAlive, 5000);
         });
     })();
 </script>
-<script src="level_sound.js?v=2"></script>
+<script src="level_sound.js?v=3"></script>
 <script>if (window.lwLevelSound) window.lwLevelSound.set(<?php echo !empty($levelActivations[1]) ? 'true' : 'false'; ?>);</script>
 </body>
 </html>
