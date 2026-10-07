@@ -113,6 +113,7 @@
 - 2026-10-07: Level.1のみテスト実装：技術発生ON中は level_sound.m4a をループ再生（level_sound.js、mobile_level.php/index.php）。OFF中は従来の無音ループ。
   iOS実機での再生・ループ継ぎ目は未検証。
 - 2026-10-08: Level.1の動画をループ再生＋音量ボタンのみ表示。mobile_level.phpにBACKボタン追加、index.phpのLevelページ「BACK TO HOME」を「BACK」に変更。
+- 2026-10-08: admin.php Activity Logsを50件ずつのページ送り（log_page）に変更。SEARCH/クリア/ページ移動後も #activity-logs の位置に留まる。
 
 ## Maintenance
 - 同じ理由で2回説明した内容は、このファイルに1行で追記する

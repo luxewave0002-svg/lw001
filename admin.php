@@ -614,25 +614,38 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
 
     // 最新の操作ログを取得 (最大50件)
     $logSearchQuery = $_GET['log_search'] ?? '';
+    $logPerPage = 50;
+    $logPage = max(1, (int)($_GET['log_page'] ?? 1));
     if ($logSearchQuery !== '') {
-        $logStmt = $pdo->prepare("
-            SELECT logs.*, users.email 
-            FROM logs 
-            LEFT JOIN users ON logs.user_id = users.id 
-            WHERE logs.action LIKE ? OR logs.details LIKE ? OR users.email LIKE ? OR logs.ip_address LIKE ? OR logs.user_agent LIKE ?
-            ORDER BY logs.created_at DESC LIMIT 100
-        ");
         $likeQuery = '%' . $logSearchQuery . '%';
-        $logStmt->execute([$likeQuery, $likeQuery, $likeQuery, $likeQuery, $likeQuery]);
+        $logWhere = "WHERE logs.action LIKE ? OR logs.details LIKE ? OR users.email LIKE ? OR logs.ip_address LIKE ? OR logs.user_agent LIKE ?";
+        $logParams = [$likeQuery, $likeQuery, $likeQuery, $likeQuery, $likeQuery];
     } else {
-        $logStmt = $pdo->query("
-            SELECT logs.*, users.email 
-            FROM logs 
-            LEFT JOIN users ON logs.user_id = users.id 
-            ORDER BY logs.created_at DESC LIMIT 50
-        ");
+        $logWhere = '';
+        $logParams = [];
     }
+    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM logs LEFT JOIN users ON logs.user_id = users.id $logWhere");
+    $countStmt->execute($logParams);
+    $logTotal = (int)$countStmt->fetchColumn();
+    $logTotalPages = max(1, (int)ceil($logTotal / $logPerPage));
+    $logPage = min($logPage, $logTotalPages);
+    $logStmt = $pdo->prepare("
+        SELECT logs.*, users.email 
+        FROM logs 
+        LEFT JOIN users ON logs.user_id = users.id 
+        $logWhere
+        ORDER BY logs.created_at DESC, logs.id DESC LIMIT $logPerPage OFFSET " . (($logPage - 1) * $logPerPage));
+    $logStmt->execute($logParams);
     $logs = $logStmt->fetchAll();
+
+    // ページ番号ボタン用URL（検索条件を引き継ぎ、Activity Logsの位置に留まる）
+    $logPageUrl = function ($pageNo) use ($searchQuery, $logSearchQuery) {
+        $q = [];
+        if ($searchQuery !== '') $q['search'] = $searchQuery;
+        if ($logSearchQuery !== '') $q['log_search'] = $logSearchQuery;
+        if ($pageNo > 1) $q['log_page'] = $pageNo;
+        return 'admin.php' . ($q ? '?' . http_build_query($q) : '') . '#activity-logs';
+    };
 }
 ?>
 <!DOCTYPE html>
@@ -976,19 +989,19 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
             </div>
 
             <!-- 操作ログセクション -->
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 mt-12 gap-4">
+            <div id="activity-logs" class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 mt-12 gap-4 scroll-mt-4">
                 <h2 class="text-xl tracking-wider">Activity Logs</h2>
                 
                 <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
                     <!-- ログ検索フォーム -->
-                    <form method="GET" class="flex items-center gap-2 w-full sm:w-auto">
+                    <form method="GET" action="admin.php#activity-logs" class="flex items-center gap-2 w-full sm:w-auto">
                         <?php if($searchQuery !== ''): ?>
                             <input type="hidden" name="search" value="<?php echo htmlspecialchars($searchQuery); ?>">
                         <?php endif; ?>
                         <input type="text" name="log_search" value="<?php echo htmlspecialchars($logSearchQuery); ?>" placeholder="Action, Details, Email, IP" class="bg-white/5 border border-white/20 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-white/50 w-full sm:w-64">
                         <button type="submit" class="bg-white/10 hover:bg-white/20 text-white px-4 py-1.5 rounded text-sm transition-colors border border-white/30 tracking-wider">SEARCH</button>
                         <?php if($logSearchQuery !== ''): ?>
-                            <a href="admin.php<?php echo $searchQuery !== '' ? '?search=' . urlencode($searchQuery) : ''; ?>" class="text-xs text-gray-400 hover:text-white transition-colors ml-2 whitespace-nowrap">クリア</a>
+                            <a href="admin.php<?php echo $searchQuery !== '' ? '?search=' . urlencode($searchQuery) : ''; ?>#activity-logs" class="text-xs text-gray-400 hover:text-white transition-colors ml-2 whitespace-nowrap">クリア</a>
                         <?php endif; ?>
                     </form>
                     
@@ -1065,6 +1078,29 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
                     </table>
                 </div>
             </div>
+            <?php if ($logTotalPages > 1): ?>
+                <?php
+                    $pStart = max(1, $logPage - 2);
+                    $pEnd = min($logTotalPages, $logPage + 2);
+                    $pBtn = 'min-w-[2.25rem] text-center px-3 py-1.5 rounded border border-white/30 text-xs tracking-wider transition-colors ';
+                ?>
+                <nav class="flex flex-wrap items-center justify-center gap-2 -mt-8 mb-12" aria-label="Activity Logs pages">
+                    <?php if ($logPage > 1): ?>
+                        <a href="<?php echo htmlspecialchars($logPageUrl(1)); ?>" class="<?php echo $pBtn; ?>text-gray-300 hover:bg-white/10">&laquo;</a>
+                        <a href="<?php echo htmlspecialchars($logPageUrl($logPage - 1)); ?>" class="<?php echo $pBtn; ?>text-gray-300 hover:bg-white/10">&lsaquo;</a>
+                    <?php endif; ?>
+                    <?php if ($pStart > 1): ?><span class="text-gray-500 text-xs">…</span><?php endif; ?>
+                    <?php for ($n = $pStart; $n <= $pEnd; $n++): ?>
+                        <a href="<?php echo htmlspecialchars($logPageUrl($n)); ?>" class="<?php echo $pBtn; echo $n === $logPage ? 'bg-white text-black' : 'text-gray-300 hover:bg-white/10'; ?>"><?php echo $n; ?></a>
+                    <?php endfor; ?>
+                    <?php if ($pEnd < $logTotalPages): ?><span class="text-gray-500 text-xs">…</span><?php endif; ?>
+                    <?php if ($logPage < $logTotalPages): ?>
+                        <a href="<?php echo htmlspecialchars($logPageUrl($logPage + 1)); ?>" class="<?php echo $pBtn; ?>text-gray-300 hover:bg-white/10">&rsaquo;</a>
+                        <a href="<?php echo htmlspecialchars($logPageUrl($logTotalPages)); ?>" class="<?php echo $pBtn; ?>text-gray-300 hover:bg-white/10">&raquo;</a>
+                    <?php endif; ?>
+                    <span class="text-[10px] text-gray-500 tracking-widest ml-2"><?php echo $logPage; ?> / <?php echo $logTotalPages; ?>（<?php echo $logTotal; ?>件）</span>
+                </nav>
+            <?php endif; ?>
 
             <!-- Levelページ メディア管理セクション -->
             <div class="flex flex-col justify-between items-start mb-4 mt-12 gap-4">
