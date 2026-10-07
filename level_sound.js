@@ -4,8 +4,23 @@
     var silent = document.getElementById('lw-bg-keepalive');
     var sound = document.getElementById('lw-level-sound');
     if (!sound) return;
+    var video = document.querySelector('[data-lw-level-video]');
+    var volBtn = document.querySelector('[data-lw-volume]');
     var on = false;
     var armed = false;
+
+    // 標準コントロールは出さず、音量(ミュート切替)ボタンだけ用意する
+    function syncVolIcon() {
+        if (!volBtn) return;
+        var m = sound.muted;
+        var onI = volBtn.querySelector('[data-lw-vol-on]'), offI = volBtn.querySelector('[data-lw-vol-off]');
+        if (onI) onI.classList.toggle('hidden', m);
+        if (offI) offI.classList.toggle('hidden', !m);
+    }
+    if (volBtn) {
+        volBtn.addEventListener('click', function () { sound.muted = !sound.muted; syncVolIcon(); });
+        syncVolIcon();
+    }
 
     function play(a) {
         if (!a) return;
@@ -16,7 +31,9 @@
         if (on) {
             if (silent) silent.pause();
             play(sound);
+            play(video);
         } else {
+            if (video) { video.pause(); try { video.currentTime = 0; } catch (e) {} }
             sound.pause();
             try { sound.currentTime = 0; } catch (e) {}
             play(silent);

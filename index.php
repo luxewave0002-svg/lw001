@@ -352,7 +352,15 @@ $unlockedLimitedLevels = array_keys(array_filter(LIMITED_LEVELS, function($lvl) 
 
                     <div id="test<?php echo $i; ?>-media" class="<?php echo $activationStartedAt ? '' : 'hidden'; ?> transition-all duration-500 <?php echo $activationStartedAt ? 'opacity-100' : 'opacity-0'; ?>">
                         <div class="overflow-hidden rounded shadow-2xl bg-black flex justify-center items-center py-8">
-                            <?php if (isVideoFile($imagePath)): ?>
+                            <?php if ($i === 1 && isVideoFile($imagePath)): ?>
+                        <?php /* Level.1テスト: ループ再生・標準コントロール非表示・音量ボタンのみ */ ?>
+                        <div class="relative w-full max-w-sm">
+                            <video data-lw-level-video src="<?php echo htmlspecialchars($imagePath); ?>" loop muted playsinline preload="auto" class="w-full h-auto opacity-90"></video>
+                            <button type="button" data-lw-volume aria-label="音量" class="absolute right-2 bottom-2 w-9 h-9 rounded-full bg-black/60 border border-white/30 text-white flex items-center justify-center">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path data-lw-vol-on d="M16 8.5a5 5 0 010 7M18.5 6a8.5 8.5 0 010 12"/><path data-lw-vol-off class="hidden" d="M16 9l5 6M21 9l-5 6"/></svg>
+            </button>
+                        </div>
+                    <?php elseif (isVideoFile($imagePath)): ?>
                                 <video src="<?php echo htmlspecialchars($imagePath); ?>" controls class="w-full max-w-sm h-auto opacity-90 hover:opacity-100 transition-opacity duration-500"></video>
                             <?php else: ?>
                                 <img src="<?php echo htmlspecialchars($imagePath); ?>" alt="Test<?php echo $i; ?> メディア" class="w-full max-w-sm h-auto object-contain opacity-90 hover:opacity-100 transition-opacity duration-500">
@@ -702,7 +710,7 @@ setInterval(keepAlive, 5000);
         });
     })();
 </script>
-<script src="level_sound.js?v=1"></script>
+<script src="level_sound.js?v=2"></script>
 <script>if (window.lwLevelSound) window.lwLevelSound.set(<?php echo !empty($levelActivations[1]) ? 'true' : 'false'; ?>);</script>
 </body>
 </html>
