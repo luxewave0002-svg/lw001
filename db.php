@@ -1,4 +1,6 @@
 <?php
+// ログインから強制ログアウトまでの秒数（24時間）
+if (!defined('FORCED_LOGOUT_SECONDS')) { define('FORCED_LOGOUT_SECONDS', 86400); }
 // セッションファイルを専用ディレクトリに保存し、他サイトの影響で消されるのを防ぐ
 $session_dir = __DIR__ . '/sessions';
 if (!file_exists($session_dir)) mkdir($session_dir, 0777, true);
@@ -311,6 +313,11 @@ try {
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     ");
+    // 24時間強制ログアウト用：最初にログインした時刻（トークンをローテーションしても引き継ぐ）
+    $rtCols = array_column($pdo->query("PRAGMA table_info(remember_tokens)")->fetchAll(), 'name');
+    if (!in_array('login_at', $rtCols, true)) {
+        $pdo->exec("ALTER TABLE remember_tokens ADD COLUMN login_at INTEGER");
+    }
 
     // ログイン失敗回数の記録テーブル（ブルートフォース対策）
     $pdo->exec("
@@ -363,11 +370,19 @@ if (!isset($_SESSION['user_id']) && !empty($_COOKIE['lw_remember'])) {
     $parts = explode(':', $_COOKIE['lw_remember'], 2);
     if (count($parts) === 2) {
         [$selector, $validator] = $parts;
-        $stmt = $pdo->prepare("SELECT rt.id, rt.user_id, rt.token_hash, rt.expires_at, u.email FROM remember_tokens rt JOIN users u ON u.id = rt.user_id WHERE rt.selector = ?");
+        $stmt = $pdo->prepare("SELECT rt.id, rt.user_id, rt.token_hash, rt.expires_at, rt.login_at, u.email FROM remember_tokens rt JOIN users u ON u.id = rt.user_id WHERE rt.selector = ?");
         $stmt->execute([$selector]);
         $rememberRow = $stmt->fetch();
 
-        if ($rememberRow && strtotime($rememberRow['expires_at']) > time() && hash_equals($rememberRow['token_hash'], hash('sha256', $validator))) {
+        $tokenValid = $rememberRow && strtotime($rememberRow['expires_at']) > time() && hash_equals($rememberRow['token_hash'], hash('sha256', $validator));
+        if ($tokenValid && !empty($rememberRow['login_at']) && time() >= (int)$rememberRow['login_at'] + FORCED_LOGOUT_SECONDS) {
+            // ログインから24時間経過：自動再ログインはせず、ON中の技術発生を期限時刻で終了させる
+            stopAllLevelActivations($pdo, $rememberRow['user_id'], 'logout', (int)$rememberRow['login_at'] + FORCED_LOGOUT_SECONDS);
+            $pdo->prepare("DELETE FROM remember_tokens WHERE id = ?")->execute([$rememberRow['id']]);
+            setcookie('lw_remember', '', time() - 3600, '/', '', $isSecure, true);
+        } elseif ($tokenValid) {
+            $tokenLoginAt = !empty($rememberRow['login_at']) ? (int)$rememberRow['login_at'] : time();
+            $_SESSION['login_at'] = $tokenLoginAt;
             $_SESSION['user_id'] = $rememberRow['user_id'];
             $_SESSION['email'] = $rememberRow['email'];
             // 単一端末ログイン制御：現在の世代番号をそのまま引き継ぐ（他端末をキックするわけではない）
@@ -376,7 +391,7 @@ if (!isset($_SESSION['user_id']) && !empty($_COOKIE['lw_remember'])) {
             $_SESSION['session_version'] = (int)$verStmt->fetchColumn();
             // 使用済みトークンはローテーション（盗用対策として毎回新しい値に差し替える）
             $pdo->prepare("DELETE FROM remember_tokens WHERE id = ?")->execute([$rememberRow['id']]);
-            issueRememberCookie($pdo, $rememberRow['user_id']);
+            issueRememberCookie($pdo, $rememberRow['user_id'], $tokenLoginAt);
         } else {
             // 無効・期限切れのCookieは破棄する
             setcookie('lw_remember', '', time() - 3600, '/', '', $isSecure, true);
@@ -384,18 +399,22 @@ if (!isset($_SESSION['user_id']) && !empty($_COOKIE['lw_remember'])) {
     }
 }
 
+// ログインから24時間経過していれば強制ログアウトする
+enforceForcedLogout($pdo);
+
 // 他の端末で新しくログインされていないか、毎回のアクセスで確認する（単一端末ログイン制御）
 enforceSingleDeviceLogin($pdo);
 
 // 永続ログイン用Cookieを発行する（1年間有効。バックグラウンドでセッションが切れても自動再ログインするために使う）
-function issueRememberCookie($pdo, $userId) {
+function issueRememberCookie($pdo, $userId, $loginAt = null) {
     global $isSecure;
+    $loginAt = $loginAt === null ? time() : (int)$loginAt;
     $selector = bin2hex(random_bytes(12));
     $validator = bin2hex(random_bytes(32));
     $expiresAt = date('Y-m-d H:i:s', time() + 31536000); // 1年
 
-    $pdo->prepare("INSERT INTO remember_tokens (user_id, selector, token_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?)")
-        ->execute([$userId, $selector, hash('sha256', $validator), date('Y-m-d H:i:s'), $expiresAt]);
+    $pdo->prepare("INSERT INTO remember_tokens (user_id, selector, token_hash, created_at, expires_at, login_at) VALUES (?, ?, ?, ?, ?, ?)")
+        ->execute([$userId, $selector, hash('sha256', $validator), date('Y-m-d H:i:s'), $expiresAt, $loginAt]);
 
     setcookie('lw_remember', $selector . ':' . $validator, [
         'expires' => time() + 31536000,
@@ -429,17 +448,44 @@ function startLevelActivation($pdo, $userId, $level) {
 }
 
 // 「技術発生」をOFFにし、履歴に確定記録として残す
-function stopLevelActivation($pdo, $userId, $level, $reason = 'manual') {
+// $endedAtTs を渡すと、その時刻を終了時刻として記録する（24時間強制ログアウト・自動OFF用。開始〜現在の範囲に丸める）
+function stopLevelActivation($pdo, $userId, $level, $reason = 'manual', $endedAtTs = null) {
     $startedAt = getLevelActivation($pdo, $userId, $level);
     if ($startedAt === null || $startedAt === false) {
         return false;
     }
-    $endedAt = date('Y-m-d H:i:s');
+    $endTs = $endedAtTs === null ? time() : (int)$endedAtTs;
+    $endTs = max((int)strtotime($startedAt), min($endTs, time()));
+    $endedAt = date('Y-m-d H:i:s', $endTs);
     $pdo->prepare("INSERT INTO level_activation_history (user_id, level, started_at, ended_at, ended_reason) VALUES (?, ?, ?, ?, ?)")
         ->execute([$userId, $level, $startedAt, $endedAt, $reason]);
     $pdo->prepare("UPDATE level_activation SET started_at = NULL WHERE user_id = ? AND level = ?")
         ->execute([$userId, $level]);
     return true;
+}
+
+// ON中の技術発生を全て終了する
+function stopAllLevelActivations($pdo, $userId, $reason, $endedAtTs = null) {
+    $activeStmt = $pdo->prepare("SELECT level FROM level_activation WHERE user_id = ? AND started_at IS NOT NULL");
+    $activeStmt->execute([$userId]);
+    foreach ($activeStmt->fetchAll(PDO::FETCH_COLUMN) as $activeLevel) {
+        stopLevelActivation($pdo, $userId, $activeLevel, $reason, $endedAtTs);
+    }
+}
+
+// ログインから24時間経過したセッションを強制ログアウトする
+function enforceForcedLogout($pdo) {
+    if (!isset($_SESSION['user_id'])) {
+        return;
+    }
+    if (empty($_SESSION['login_at'])) {
+        $_SESSION['login_at'] = time(); // 旧セッション（login_at未記録）はここを起点にする
+        return;
+    }
+    $deadline = (int)$_SESSION['login_at'] + FORCED_LOGOUT_SECONDS;
+    if (time() >= $deadline) {
+        logoutUser($pdo, $deadline);
+    }
 }
 
 // 直近の履歴を取得する（新しい順）
@@ -530,17 +576,12 @@ function requireLogin($pdo, $redirectTo = 'login.php') {
 }
 
 // ログアウト処理（セッションに加えて、永続ログイン用Cookie・DBトークンも確実に破棄する）
-function logoutUser($pdo) {
+function logoutUser($pdo, $endedAtTs = null) {
     global $isSecure;
 
     // ON中の「技術発生」（通常Level・Limitedレベル問わず）を全て自動OFFにし、履歴に残す
     if (isset($_SESSION['user_id'])) {
-        $userId = $_SESSION['user_id'];
-        $activeStmt = $pdo->prepare("SELECT level FROM level_activation WHERE user_id = ? AND started_at IS NOT NULL");
-        $activeStmt->execute([$userId]);
-        foreach ($activeStmt->fetchAll(PDO::FETCH_COLUMN) as $activeLevel) {
-            stopLevelActivation($pdo, $userId, $activeLevel, 'logout');
-        }
+        stopAllLevelActivations($pdo, $_SESSION['user_id'], 'logout', $endedAtTs);
     }
 
     if (!empty($_COOKIE['lw_remember'])) {
@@ -558,7 +599,10 @@ function logoutUser($pdo) {
         }
     }
 
-    session_destroy();
+    $_SESSION = [];
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_destroy();
+    }
 }
 
 // ブルートフォース対策：直近の失敗回数が上限を超えていないか確認する
@@ -586,6 +630,7 @@ function registerNewLoginDevice($pdo, $userId) {
 
     $newVersion = (int)$pdo->query("SELECT session_version FROM users WHERE id = " . (int)$userId)->fetchColumn();
     $_SESSION['session_version'] = $newVersion;
+    $_SESSION['login_at'] = time(); // 24時間強制ログアウトの起点
 
     // 他端末の永続ログインCookie（remember_tokens）は全て無効化する。今回発行する分だけ残す
     $pdo->prepare("DELETE FROM remember_tokens WHERE user_id = ?")->execute([$userId]);

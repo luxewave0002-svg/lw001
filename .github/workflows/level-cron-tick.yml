@@ -11,4 +11,10 @@ jobs:
     steps:
       - name: Call cron_tick.php
         run: |
-          curl -s -f "https://luxewave.jp/test/cron_tick.php" || echo "cron_tick.php call failed (non-fatal)"
+          status=$(curl -s -A "LuxeWave-Cron/1.0" -o body.txt -w "%{http_code}" "https://luxewave.jp/test/cron_tick.php")
+          echo "HTTP status: $status"
+          cat body.txt; echo
+          if [ "$status" != "200" ] || ! grep -q '"ranAt"' body.txt; then
+            echo "cron_tick.php failed"
+            exit 1
+          fi

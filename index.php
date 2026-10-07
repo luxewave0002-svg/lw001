@@ -610,6 +610,7 @@ setInterval(keepAlive, 5000);
 
             // トグル操作 → サーバーへON/OFFをPOSTし、成功した場合のみ画面に反映する
             window.handleToggleChange = function(level, isChecked) {
+                if (level === 1 && window.lwLevelSound) window.lwLevelSound.set(isChecked); // Level.1テスト：タップ中に再生開始/停止
                 const checkbox = document.getElementById('toggleTest' + level);
                 if (checkbox) checkbox.disabled = true;
                 const body = new URLSearchParams({
@@ -623,6 +624,7 @@ setInterval(keepAlive, 5000);
                         if (checkbox) checkbox.disabled = false;
                         if (data.error) {
                             if (checkbox) checkbox.checked = !isChecked;
+                            if (level === 1 && window.lwLevelSound) window.lwLevelSound.set(!isChecked);
                             return;
                         }
                         serverStartedAtMs[level] = data.startedAtMs;
@@ -632,6 +634,7 @@ setInterval(keepAlive, 5000);
                     .catch(function() {
                         if (checkbox) checkbox.disabled = false;
                         if (checkbox) checkbox.checked = !isChecked;
+                        if (level === 1 && window.lwLevelSound) window.lwLevelSound.set(!isChecked);
                     });
             };
 
@@ -647,6 +650,7 @@ setInterval(keepAlive, 5000);
                             serverStartedAtMs[level] = data.startedAtMs;
                             const isOn = !!serverStartedAtMs[level];
                             const checkbox = document.getElementById('toggleTest' + level);
+                            if (level === 1 && window.lwLevelSound) window.lwLevelSound.set(isOn);
                             if (wasOn !== isOn) {
                                 if (checkbox) checkbox.checked = isOn;
                                 toggleImage('test' + level + '-media', 'status-test' + level, isOn);
@@ -677,6 +681,8 @@ setInterval(keepAlive, 5000);
             showPage(initialPage);
         });
     </script>
+<!-- Level.1テスト：技術発生ON中は level_sound.m4a をループ再生（OFF中は下の無音ループ） -->
+<audio id="lw-level-sound" src="level_sound.m4a?v=1" loop playsinline preload="auto" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;"></audio>
 <!-- バックグラウンド・画面ロック延命用サイレント音声（隠し要素。muted指定はしない＝無音の中身を再生することで背景オーディオ扱いにする） -->
 <audio id="lw-bg-keepalive" src="bg-keepalive.m4a" loop playsinline preload="auto" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;"></audio>
 <script>
@@ -684,7 +690,10 @@ setInterval(keepAlive, 5000);
         var a = document.getElementById('lw-bg-keepalive');
         if (!a) return;
         a.volume = 1.0;
-        function tryPlay() { a.play().catch(function() {}); }
+        function tryPlay() {
+            if (window.lwLevelSound && window.lwLevelSound.isOn()) return; // Level.1の音源再生中は無音ループを止めておく
+            a.play().catch(function() {});
+        }
         tryPlay();
         document.addEventListener('click', tryPlay, { once: true });
         document.addEventListener('touchstart', tryPlay, { once: true });
@@ -693,5 +702,7 @@ setInterval(keepAlive, 5000);
         });
     })();
 </script>
+<script src="level_sound.js?v=1"></script>
+<script>if (window.lwLevelSound) window.lwLevelSound.set(<?php echo !empty($levelActivations[1]) ? 'true' : 'false'; ?>);</script>
 </body>
 </html>
