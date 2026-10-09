@@ -520,7 +520,7 @@ $imagePath = getImagePath((string)$level);
 
 <?php if ((int)$level === 1 && !$isLocked): ?>
 <!-- Level.1テスト：技術発生ON中は level_sound.m4a をループ再生（OFF中は下の無音ループ） -->
-<audio id="lw-level-sound" src="level_sound.m4a?v=1" loop playsinline preload="auto" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;"></audio>
+<audio id="lw-level-sound" src="level_sound.m4a?v=2" loop playsinline preload="auto" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;"></audio>
 <?php endif; ?>
 <!-- バックグラウンド・画面ロック延命用サイレント音声（隠し要素。muted指定はしない＝無音の中身を再生することで背景オーディオ扱いにする） -->
 <audio id="lw-bg-keepalive" src="bg-keepalive.m4a" loop playsinline preload="auto" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;"></audio>
