@@ -10,6 +10,83 @@
     var on = false;
     var armed = false;
 
+    // 映像のディゾルブ（クロスフェード）ループ用：同じ動画をもう1枚重ね、終わり際に切り替える
+    var FADE = 0.8;              // ディゾルブの長さ（秒）
+    var vB = null, cur = video, other = null;
+    var fading = false, fadeStart = 0, raf = null;
+    var VID_OPACITY = 0.9;
+
+    function setupDissolve() {
+        if (!video || vB) return;
+        video.removeAttribute('loop');
+        video.loop = false;
+        vB = video.cloneNode(false);
+        vB.removeAttribute('data-lw-level-video');
+        vB.removeAttribute('loop');
+        vB.loop = false;
+        vB.muted = true;
+        vB.className = 'absolute inset-0 w-full h-full object-contain pointer-events-none';
+        vB.style.opacity = '0';
+        video.insertAdjacentElement('afterend', vB);
+        cur = video;
+        other = vB;
+        // 背景などでrAFが止まって終端まで再生された場合の保険：頭から再生し直す
+        [video, vB].forEach(function (v) {
+            v.addEventListener('ended', function () {
+                if (on && v === cur && !fading) { try { v.currentTime = 0; } catch (e) {} play(v); }
+            });
+        });
+    }
+
+    function videoLoop() {
+        raf = null;
+        if (!on || !cur) return;
+        var d = cur.duration;
+        if (d && isFinite(d) && d > FADE * 2) {
+            if (!fading && d - cur.currentTime <= FADE) {
+                fading = true;
+                fadeStart = performance.now();
+                try { other.currentTime = 0; } catch (e) {}
+                play(other);
+            }
+            if (fading) {
+                var k = Math.min(1, (performance.now() - fadeStart) / (FADE * 1000));
+                other.style.opacity = String(k * VID_OPACITY);
+                cur.style.opacity = String((1 - k) * VID_OPACITY);
+                if (k >= 1) {
+                    cur.pause();
+                    try { cur.currentTime = 0; } catch (e) {}
+                    var t = cur; cur = other; other = t;
+                    fading = false;
+                }
+            }
+        }
+        raf = requestAnimationFrame(videoLoop);
+    }
+
+    function startVideo() {
+        if (!video) return;
+        setupDissolve();
+        play(cur);
+        if (fading) play(other);
+        if (!raf) raf = requestAnimationFrame(videoLoop);
+    }
+
+    function resetVideo() {
+        if (!video) return;
+        if (raf) { cancelAnimationFrame(raf); raf = null; }
+        fading = false;
+        [video, vB].forEach(function (v) {
+            if (!v) return;
+            v.pause();
+            try { v.currentTime = 0; } catch (e) {}
+        });
+        cur = video;
+        other = vB;
+        video.style.opacity = '';
+        if (vB) vB.style.opacity = '0';
+    }
+
     // Web Audio 用
     var ctx = null, gain = null, buf = null, src = null;
     var loading = false, failed = false, waActive = false;
@@ -98,11 +175,11 @@
                 if (silent) silent.pause();
                 play(sound);
             }
-            play(video);
+            startVideo();
         } else {
             waActive = false;
             stopSrc();
-            if (video) { video.pause(); try { video.currentTime = 0; } catch (e) {} }
+            resetVideo();
             sound.pause();
             try { sound.currentTime = 0; } catch (e) {}
             play(silent);
