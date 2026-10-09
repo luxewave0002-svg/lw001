@@ -1,5 +1,5 @@
 // Level.2〜4 用：技術発生ONの間、映像を0.8秒のディゾルブ（クロスフェード）でループ再生する。
-// 標準コントロールは出さず、音量(ミュート切替)ボタンだけ置く。動画は初期状態でミュート。
+// 標準コントロールは出さない。動画は常にミュート（音は level_sound.js の音源ループが鳴らし、音量ボタンもそちらが担当）。
 (function () {
     var FADE = 0.8;      // ディゾルブの長さ（秒）
     var OP = 0.9;        // 映像の不透明度
@@ -13,7 +13,6 @@
         if (items[level]) return items[level];
         var video = document.querySelector('[data-lw-dv="' + level + '"]');
         if (!video) return null;
-        var btn = document.querySelector('[data-lw-dvol="' + level + '"]');
         video.removeAttribute('loop');
         video.loop = false;
         var vB = video.cloneNode(false);
@@ -24,22 +23,6 @@
 
         var it = { video: video, vB: vB, cur: video, other: vB, on: false, fading: false, fadeStart: 0, raf: null };
         items[level] = it;
-
-        function syncIcon() {
-            if (!btn) return;
-            var m = video.muted;
-            var onI = btn.querySelector('[data-lw-vol-on]'), offI = btn.querySelector('[data-lw-vol-off]');
-            if (onI) onI.classList.toggle('hidden', m);
-            if (offI) offI.classList.toggle('hidden', !m);
-        }
-        if (btn) {
-            btn.addEventListener('click', function () {
-                var m = !video.muted;
-                video.muted = m; vB.muted = m;
-                syncIcon();
-            });
-            syncIcon();
-        }
 
         // 背景などでrAFが止まり終端まで再生された場合の保険：頭から再生し直す
         [video, vB].forEach(function (v) {

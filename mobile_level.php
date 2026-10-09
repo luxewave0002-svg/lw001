@@ -410,7 +410,7 @@ $imagePath = getImagePath((string)$level);
             // トグル操作 → サーバーへON/OFFをPOSTし、成功した場合のみ画面に反映する
             window.handleToggleChange = function(isChecked) {
                 if (window.lwLevelVideo) window.lwLevelVideo.set(level, isChecked); // Level.2〜4：ディゾルブループ映像
-                if (window.lwLevelSound) window.lwLevelSound.set(isChecked); // Level.1テスト：タップ中に再生開始/停止
+                if (window.lwLevelSound) window.lwLevelSound.setLevel(level, isChecked); // タップ中に再生開始/停止
                 toggleCheckbox.disabled = true;
                 const body = new URLSearchParams({
                     action: isChecked ? 'start' : 'stop',
@@ -425,7 +425,7 @@ $imagePath = getImagePath((string)$level);
                             // 失敗時はトグルを元の状態に戻す
                             toggleCheckbox.checked = !isChecked;
                             if (window.lwLevelVideo) window.lwLevelVideo.set(level, !isChecked);
-                            if (window.lwLevelSound) window.lwLevelSound.set(!isChecked);
+                            if (window.lwLevelSound) window.lwLevelSound.setLevel(level, !isChecked);
                             return;
                         }
                         serverStartedAtMs = data.startedAtMs;
@@ -436,7 +436,7 @@ $imagePath = getImagePath((string)$level);
                         toggleCheckbox.disabled = false;
                         toggleCheckbox.checked = !isChecked;
                         if (window.lwLevelVideo) window.lwLevelVideo.set(level, !isChecked);
-                        if (window.lwLevelSound) window.lwLevelSound.set(!isChecked);
+                        if (window.lwLevelSound) window.lwLevelSound.setLevel(level, !isChecked);
                     });
             };
 
@@ -452,7 +452,7 @@ $imagePath = getImagePath((string)$level);
                         serverStartedAtMs = data.startedAtMs;
                         const isOn = !!serverStartedAtMs;
                         if (window.lwLevelVideo) window.lwLevelVideo.set(level, isOn);
-                        if (window.lwLevelSound) window.lwLevelSound.set(isOn);
+                        if (window.lwLevelSound) window.lwLevelSound.setLevel(level, isOn);
                         if (wasOn !== isOn) {
                             toggleCheckbox.checked = isOn;
                             toggleImage('level-media', 'status-level', isOn);
@@ -530,8 +530,8 @@ $imagePath = getImagePath((string)$level);
     }
 </script>
 
-<?php if ((int)$level === 1 && !$isLocked): ?>
-<!-- Level.1テスト：技術発生ON中は level_sound.m4a をループ再生（OFF中は下の無音ループ） -->
+<?php if ((int)$level >= 1 && (int)$level <= 4 && !$isLocked): ?>
+<!-- 技術発生ON中は level_sound.m4a をループ再生（OFF中は下の無音ループ） -->
 <audio id="lw-level-sound" src="level_sound.m4a?v=2" loop playsinline preload="auto" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;"></audio>
 <?php endif; ?>
 <!-- バックグラウンド・画面ロック延命用サイレント音声（隠し要素。muted指定はしない＝無音の中身を再生することで背景オーディオ扱いにする） -->
@@ -554,12 +554,12 @@ $imagePath = getImagePath((string)$level);
     })();
 </script>
 <?php if ((int)$level >= 2 && (int)$level <= 4 && !$isLocked): ?>
-<script src="level_video.js?v=1"></script>
+<script src="level_video.js?v=2"></script>
 <script>if (window.lwLevelVideo) window.lwLevelVideo.set(<?php echo (int)$level; ?>, <?php echo $activationStartedAt ? 'true' : 'false'; ?>);</script>
 <?php endif; ?>
-<?php if ((int)$level === 1 && !$isLocked): ?>
-<script src="level_sound.js?v=4"></script>
-<script>if (window.lwLevelSound) window.lwLevelSound.set(<?php echo $activationStartedAt ? 'true' : 'false'; ?>);</script>
+<?php if ((int)$level >= 1 && (int)$level <= 4 && !$isLocked): ?>
+<script src="level_sound.js?v=5"></script>
+<script>if (window.lwLevelSound) window.lwLevelSound.setLevel(<?php echo (int)$level; ?>, <?php echo $activationStartedAt ? 'true' : 'false'; ?>);</script>
 <?php endif; ?>
 </body>
 </html>

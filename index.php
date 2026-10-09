@@ -627,7 +627,7 @@ setInterval(keepAlive, 5000);
             // トグル操作 → サーバーへON/OFFをPOSTし、成功した場合のみ画面に反映する
             window.handleToggleChange = function(level, isChecked) {
                 if (window.lwLevelVideo) window.lwLevelVideo.set(level, isChecked); // Level.2〜4：ディゾルブループ映像
-                if (level === 1 && window.lwLevelSound) window.lwLevelSound.set(isChecked); // Level.1テスト：タップ中に再生開始/停止
+                if (level >= 1 && level <= 4 && window.lwLevelSound) window.lwLevelSound.setLevel(level, isChecked); // タップ中に再生開始/停止
                 const checkbox = document.getElementById('toggleTest' + level);
                 if (checkbox) checkbox.disabled = true;
                 const body = new URLSearchParams({
@@ -642,7 +642,7 @@ setInterval(keepAlive, 5000);
                         if (data.error) {
                             if (checkbox) checkbox.checked = !isChecked;
                             if (window.lwLevelVideo) window.lwLevelVideo.set(level, !isChecked);
-                            if (level === 1 && window.lwLevelSound) window.lwLevelSound.set(!isChecked);
+                            if (level >= 1 && level <= 4 && window.lwLevelSound) window.lwLevelSound.setLevel(level, !isChecked);
                             return;
                         }
                         serverStartedAtMs[level] = data.startedAtMs;
@@ -653,7 +653,7 @@ setInterval(keepAlive, 5000);
                         if (checkbox) checkbox.disabled = false;
                         if (checkbox) checkbox.checked = !isChecked;
                         if (window.lwLevelVideo) window.lwLevelVideo.set(level, !isChecked);
-                        if (level === 1 && window.lwLevelSound) window.lwLevelSound.set(!isChecked);
+                        if (level >= 1 && level <= 4 && window.lwLevelSound) window.lwLevelSound.setLevel(level, !isChecked);
                     });
             };
 
@@ -670,7 +670,7 @@ setInterval(keepAlive, 5000);
                             const isOn = !!serverStartedAtMs[level];
                             const checkbox = document.getElementById('toggleTest' + level);
                             if (window.lwLevelVideo) window.lwLevelVideo.set(level, isOn);
-                            if (level === 1 && window.lwLevelSound) window.lwLevelSound.set(isOn);
+                            if (level >= 1 && level <= 4 && window.lwLevelSound) window.lwLevelSound.setLevel(level, isOn);
                             if (wasOn !== isOn) {
                                 if (checkbox) checkbox.checked = isOn;
                                 toggleImage('test' + level + '-media', 'status-test' + level, isOn);
@@ -722,9 +722,9 @@ setInterval(keepAlive, 5000);
         });
     })();
 </script>
-<script src="level_video.js?v=1"></script>
+<script src="level_video.js?v=2"></script>
 <script>if (window.lwLevelVideo) { <?php foreach ([2, 3, 4] as $lv): ?>window.lwLevelVideo.set(<?php echo $lv; ?>, <?php echo !empty($levelActivations[$lv]) ? 'true' : 'false'; ?>); <?php endforeach; ?>}</script>
-<script src="level_sound.js?v=4"></script>
-<script>if (window.lwLevelSound) window.lwLevelSound.set(<?php echo !empty($levelActivations[1]) ? 'true' : 'false'; ?>);</script>
+<script src="level_sound.js?v=5"></script>
+<script>if (window.lwLevelSound) { <?php foreach ([1, 2, 3, 4] as $lv): ?>window.lwLevelSound.setLevel(<?php echo $lv; ?>, <?php echo !empty($levelActivations[$lv]) ? 'true' : 'false'; ?>); <?php endforeach; ?>}</script>
 </body>
 </html>

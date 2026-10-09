@@ -6,8 +6,9 @@
     var sound = document.getElementById('lw-level-sound');
     if (!sound) return;
     var video = document.querySelector('[data-lw-level-video]');
-    var volBtn = document.querySelector('[data-lw-volume]');
+    var volBtns = document.querySelectorAll('[data-lw-volume],[data-lw-dvol]');
     var on = false;
+    var levels = {};   // Levelごとの技術発生ON/OFF（どれか1つでもONなら音を鳴らす）
     var armed = false;
 
     // 映像のディゾルブ（クロスフェード）ループ用：同じ動画をもう1枚重ね、終わり際に切り替える
@@ -144,17 +145,18 @@
 
     // 標準コントロールは出さず、音量(ミュート切替)ボタンだけ用意する
     function syncVolIcon() {
-        if (!volBtn) return;
         var m = sound.muted;
-        var onI = volBtn.querySelector('[data-lw-vol-on]'), offI = volBtn.querySelector('[data-lw-vol-off]');
-        if (onI) onI.classList.toggle('hidden', m);
-        if (offI) offI.classList.toggle('hidden', !m);
+        Array.prototype.forEach.call(volBtns, function (btn) {
+            var onI = btn.querySelector('[data-lw-vol-on]'), offI = btn.querySelector('[data-lw-vol-off]');
+            if (onI) onI.classList.toggle('hidden', m);
+            if (offI) offI.classList.toggle('hidden', !m);
+        });
         if (gain) gain.gain.value = m ? 0 : 1;
     }
-    if (volBtn) {
-        volBtn.addEventListener('click', function () { sound.muted = !sound.muted; syncVolIcon(); });
-        syncVolIcon();
-    }
+    Array.prototype.forEach.call(volBtns, function (btn) {
+        btn.addEventListener('click', function () { sound.muted = !sound.muted; syncVolIcon(); });
+    });
+    syncVolIcon();
 
     function apply() {
         if (on) {
@@ -175,7 +177,7 @@
                 if (silent) silent.pause();
                 play(sound);
             }
-            startVideo();
+            if (levels[1]) startVideo(); else resetVideo();
         } else {
             waActive = false;
             stopSrc();
@@ -204,6 +206,11 @@
         // <audio>フォールバックで鳴らしている間だけtrue（無音ループ側が止める判定に使う）
         isOn: function () { return on && !waActive; },
         // タップ操作の中から同期的に呼ぶこと（iOSの再生制限対策）
-        set: function (v) { on = !!v; apply(); arm(); }
+        setLevel: function (level, v) {
+            levels[level] = !!v;
+            on = Object.keys(levels).some(function (k) { return levels[k]; });
+            apply(); arm();
+        },
+        set: function (v) { this.setLevel(1, v); }
     };
 })();
