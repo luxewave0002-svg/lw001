@@ -266,7 +266,7 @@ $imagePath = getImagePath((string)$level);
         <?php endif; ?>
 
         <div class="mt-8">
-            <button type="button" onclick="if (history.length > 1) { history.back(); } else { location.href = 'mobile.php'; }" class="border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 focus:outline-none">BACK</button>
+            <a href="mobile_home.php" class="inline-block border border-white/30 text-gray-300 hover:text-white hover:bg-white/10 px-8 py-2.5 rounded-full tracking-[0.2em] text-xs transition-all duration-300 focus:outline-none">BACK</a>
         </div>
         <a href="mobile.php" class="text-xs text-gray-500 underline underline-offset-4 tracking-widest mt-4 inline-block">TOPに戻る</a>
 
