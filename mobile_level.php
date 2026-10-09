@@ -248,6 +248,14 @@ $imagePath = getImagePath((string)$level);
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path data-lw-vol-on d="M16 8.5a5 5 0 010 7M18.5 6a8.5 8.5 0 010 12"/><path data-lw-vol-off class="hidden" d="M16 9l5 6M21 9l-5 6"/></svg>
             </button>
                         </div>
+                    <?php elseif ((int)$level >= 2 && (int)$level <= 4 && isVideoFile($imagePath)): ?>
+                    <?php /* Level.2〜4: ディゾルブループ・標準コントロール非表示・音量ボタンのみ */ ?>
+                    <div class="relative w-full max-w-xs">
+                        <video data-lw-dv="<?php echo $level; ?>" src="<?php echo htmlspecialchars($imagePath); ?>" loop muted playsinline preload="auto" class="w-full h-auto opacity-90"></video>
+                        <button type="button" data-lw-dvol="<?php echo $level; ?>" aria-label="音量" class="absolute right-2 bottom-2 w-9 h-9 rounded-full bg-black/60 border border-white/30 text-white flex items-center justify-center">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path data-lw-vol-on d="M16 8.5a5 5 0 010 7M18.5 6a8.5 8.5 0 010 12"/><path data-lw-vol-off class="hidden" d="M16 9l5 6M21 9l-5 6"/></svg>
+            </button>
+                    </div>
                     <?php elseif (isVideoFile($imagePath)): ?>
                         <video src="<?php echo htmlspecialchars($imagePath); ?>" controls class="w-full max-w-xs h-auto opacity-90 hover:opacity-100 transition-opacity duration-500"></video>
                     <?php else: ?>
@@ -401,6 +409,7 @@ $imagePath = getImagePath((string)$level);
 
             // トグル操作 → サーバーへON/OFFをPOSTし、成功した場合のみ画面に反映する
             window.handleToggleChange = function(isChecked) {
+                if (window.lwLevelVideo) window.lwLevelVideo.set(level, isChecked); // Level.2〜4：ディゾルブループ映像
                 if (window.lwLevelSound) window.lwLevelSound.set(isChecked); // Level.1テスト：タップ中に再生開始/停止
                 toggleCheckbox.disabled = true;
                 const body = new URLSearchParams({
@@ -415,6 +424,7 @@ $imagePath = getImagePath((string)$level);
                         if (data.error) {
                             // 失敗時はトグルを元の状態に戻す
                             toggleCheckbox.checked = !isChecked;
+                            if (window.lwLevelVideo) window.lwLevelVideo.set(level, !isChecked);
                             if (window.lwLevelSound) window.lwLevelSound.set(!isChecked);
                             return;
                         }
@@ -425,6 +435,7 @@ $imagePath = getImagePath((string)$level);
                     .catch(function() {
                         toggleCheckbox.disabled = false;
                         toggleCheckbox.checked = !isChecked;
+                        if (window.lwLevelVideo) window.lwLevelVideo.set(level, !isChecked);
                         if (window.lwLevelSound) window.lwLevelSound.set(!isChecked);
                     });
             };
@@ -440,6 +451,7 @@ $imagePath = getImagePath((string)$level);
                         const wasOn = !!serverStartedAtMs;
                         serverStartedAtMs = data.startedAtMs;
                         const isOn = !!serverStartedAtMs;
+                        if (window.lwLevelVideo) window.lwLevelVideo.set(level, isOn);
                         if (window.lwLevelSound) window.lwLevelSound.set(isOn);
                         if (wasOn !== isOn) {
                             toggleCheckbox.checked = isOn;
@@ -541,6 +553,10 @@ $imagePath = getImagePath((string)$level);
         });
     })();
 </script>
+<?php if ((int)$level >= 2 && (int)$level <= 4 && !$isLocked): ?>
+<script src="level_video.js?v=1"></script>
+<script>if (window.lwLevelVideo) window.lwLevelVideo.set(<?php echo (int)$level; ?>, <?php echo $activationStartedAt ? 'true' : 'false'; ?>);</script>
+<?php endif; ?>
 <?php if ((int)$level === 1 && !$isLocked): ?>
 <script src="level_sound.js?v=4"></script>
 <script>if (window.lwLevelSound) window.lwLevelSound.set(<?php echo $activationStartedAt ? 'true' : 'false'; ?>);</script>

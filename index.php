@@ -360,7 +360,15 @@ $unlockedLimitedLevels = array_keys(array_filter(LIMITED_LEVELS, function($lvl) 
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path data-lw-vol-on d="M16 8.5a5 5 0 010 7M18.5 6a8.5 8.5 0 010 12"/><path data-lw-vol-off class="hidden" d="M16 9l5 6M21 9l-5 6"/></svg>
             </button>
                         </div>
-                    <?php elseif (isVideoFile($imagePath)): ?>
+                    <?php elseif ($i >= 2 && $i <= 4 && isVideoFile($imagePath)): ?>
+                            <?php /* Level.2〜4: ディゾルブループ・標準コントロール非表示・音量ボタンのみ */ ?>
+                            <div class="relative w-full max-w-sm">
+                                <video data-lw-dv="<?php echo $i; ?>" src="<?php echo htmlspecialchars($imagePath); ?>" loop muted playsinline preload="auto" class="w-full h-auto opacity-90"></video>
+                                <button type="button" data-lw-dvol="<?php echo $i; ?>" aria-label="音量" class="absolute right-2 bottom-2 w-9 h-9 rounded-full bg-black/60 border border-white/30 text-white flex items-center justify-center">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path data-lw-vol-on d="M16 8.5a5 5 0 010 7M18.5 6a8.5 8.5 0 010 12"/><path data-lw-vol-off class="hidden" d="M16 9l5 6M21 9l-5 6"/></svg>
+            </button>
+                            </div>
+                            <?php elseif (isVideoFile($imagePath)): ?>
                                 <video src="<?php echo htmlspecialchars($imagePath); ?>" controls class="w-full max-w-sm h-auto opacity-90 hover:opacity-100 transition-opacity duration-500"></video>
                             <?php else: ?>
                                 <img src="<?php echo htmlspecialchars($imagePath); ?>" alt="Test<?php echo $i; ?> メディア" class="w-full max-w-sm h-auto object-contain opacity-90 hover:opacity-100 transition-opacity duration-500">
@@ -618,6 +626,7 @@ setInterval(keepAlive, 5000);
 
             // トグル操作 → サーバーへON/OFFをPOSTし、成功した場合のみ画面に反映する
             window.handleToggleChange = function(level, isChecked) {
+                if (window.lwLevelVideo) window.lwLevelVideo.set(level, isChecked); // Level.2〜4：ディゾルブループ映像
                 if (level === 1 && window.lwLevelSound) window.lwLevelSound.set(isChecked); // Level.1テスト：タップ中に再生開始/停止
                 const checkbox = document.getElementById('toggleTest' + level);
                 if (checkbox) checkbox.disabled = true;
@@ -632,6 +641,7 @@ setInterval(keepAlive, 5000);
                         if (checkbox) checkbox.disabled = false;
                         if (data.error) {
                             if (checkbox) checkbox.checked = !isChecked;
+                            if (window.lwLevelVideo) window.lwLevelVideo.set(level, !isChecked);
                             if (level === 1 && window.lwLevelSound) window.lwLevelSound.set(!isChecked);
                             return;
                         }
@@ -642,6 +652,7 @@ setInterval(keepAlive, 5000);
                     .catch(function() {
                         if (checkbox) checkbox.disabled = false;
                         if (checkbox) checkbox.checked = !isChecked;
+                        if (window.lwLevelVideo) window.lwLevelVideo.set(level, !isChecked);
                         if (level === 1 && window.lwLevelSound) window.lwLevelSound.set(!isChecked);
                     });
             };
@@ -658,6 +669,7 @@ setInterval(keepAlive, 5000);
                             serverStartedAtMs[level] = data.startedAtMs;
                             const isOn = !!serverStartedAtMs[level];
                             const checkbox = document.getElementById('toggleTest' + level);
+                            if (window.lwLevelVideo) window.lwLevelVideo.set(level, isOn);
                             if (level === 1 && window.lwLevelSound) window.lwLevelSound.set(isOn);
                             if (wasOn !== isOn) {
                                 if (checkbox) checkbox.checked = isOn;
@@ -710,6 +722,8 @@ setInterval(keepAlive, 5000);
         });
     })();
 </script>
+<script src="level_video.js?v=1"></script>
+<script>if (window.lwLevelVideo) { <?php foreach ([2, 3, 4] as $lv): ?>window.lwLevelVideo.set(<?php echo $lv; ?>, <?php echo !empty($levelActivations[$lv]) ? 'true' : 'false'; ?>); <?php endforeach; ?>}</script>
 <script src="level_sound.js?v=4"></script>
 <script>if (window.lwLevelSound) window.lwLevelSound.set(<?php echo !empty($levelActivations[1]) ? 'true' : 'false'; ?>);</script>
 </body>
