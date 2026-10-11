@@ -1,4 +1,6 @@
 <?php
+// 英語版(/en/)の言語判定・翻訳・切替リンク（出力フィルタ）
+require_once __DIR__ . '/i18n.php';
 // ログインから強制ログアウトまでの秒数（24時間）
 if (!defined('FORCED_LOGOUT_SECONDS')) { define('FORCED_LOGOUT_SECONDS', 86400); }
 // セッションファイルを専用ディレクトリに保存し、他サイトの影響で消されるのを防ぐ
