@@ -301,7 +301,7 @@ function lwInjectSwitcher($buf) {
     $en = LW_LANG === 'en';
     $jpHtml = $en ? '<a href="' . $alt . '" style="color:#9ca3af;text-decoration:none">JP</a>' : '<span style="color:#fff">JP</span>';
     $enHtml = $en ? '<span style="color:#fff">EN</span>' : '<a href="' . $alt . '" style="color:#9ca3af;text-decoration:none">EN</a>';
-    $box = '<div id="lw-lang-switch" style="position:fixed;right:8px;bottom:8px;z-index:2147483000;'
+    $box = '<div id="lw-lang-switch" style="position:fixed;left:8px;bottom:8px;z-index:2147483000;'
          . 'font:11px/1 Montserrat,sans-serif;letter-spacing:.12em;background:rgba(0,0,0,.55);'
          . 'border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:6px 10px">'
          . $jpHtml . ' <span style="color:#6b7280">|</span> ' . $enHtml . '</div>';
