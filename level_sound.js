@@ -1,6 +1,6 @@
 // Level.1 テスト用：技術発生がONの間だけ level_sound.m4a をループ再生する。
 // 音は Web Audio のバッファループ（継ぎ目が出にくい）で鳴らし、使えない場合は <audio loop> にフォールバックする。
-// OFFの間は従来どおり無音ループ(lw-bg-keepalive)に戻す。他のLevelでは読み込まれない。
+// OFFの間は何も鳴らさない（無音ループは廃止。lw-bg-keepalive は無ければ何もしない）。
 (function () {
     var silent = document.getElementById('lw-bg-keepalive');
     var sound = document.getElementById('lw-level-sound');

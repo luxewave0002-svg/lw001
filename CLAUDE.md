@@ -122,6 +122,9 @@
 - 2026-10-10: mobile_level.php の BACK を履歴戻りから mobile_home.php への固定リンクに変更。
 - 2026-10-12: 英語版 `/en/` を追加（PC・スマホ共通）。`.htaccess` が `/en/xxx.php`→`xxx.php` に内部転送、`i18n.php`（db.php先頭で読込）がURLで言語判定し、HTML/JSON出力を辞書で日本語→英語に置換。全ページ左下に「JP | EN」切替リンク（右下はADMINボタン等と被るため）。
   admin.php・メール本文は日本語のまま。**新しい日本語文言を追加したら `i18n.php` の辞書にも英訳を足す**（英訳に ' " \\ < > & は入れない）。実サーバーでの `/en/` 動作は未確認。
+- 2026-10-15: 全ページの無音ループ(`bg-keepalive.m4a`のaudio+script)を廃止。音は各Levelの技術発生ON中のみ（level_sound.js、現状維持）。
+  併せて login.php / mobile_login.php を開いたとき localStorage の `lw_last_page` を消す（再ログイン後にPWAの「前回ページ復元」でダッシュボード等へ飛ばされず、常にHOMEへ入るように）。
+  ※無音ループ廃止でiOSのバックグラウンド挙動が変わる可能性あり（実機未確認）。
 
 ## Maintenance
 - 同じ理由で2回説明した内容は、このファイルに1行で追記する

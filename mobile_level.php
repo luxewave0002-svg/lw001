@@ -531,28 +531,9 @@ $imagePath = getImagePath((string)$level);
 </script>
 
 <?php if ((int)$level >= 1 && (int)$level <= 4 && !$isLocked): ?>
-<!-- 技術発生ON中は level_sound.m4a をループ再生（OFF中は下の無音ループ） -->
+<!-- 技術発生ON中は level_sound.m4a をループ再生（OFF中は何も鳴らさない） -->
 <audio id="lw-level-sound" src="level_sound.m4a?v=2" loop playsinline preload="auto" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;"></audio>
 <?php endif; ?>
-<!-- バックグラウンド・画面ロック延命用サイレント音声（隠し要素。muted指定はしない＝無音の中身を再生することで背景オーディオ扱いにする） -->
-<audio id="lw-bg-keepalive" src="bg-keepalive.m4a" loop playsinline preload="auto" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;"></audio>
-<script>
-    (function() {
-        var a = document.getElementById('lw-bg-keepalive');
-        if (!a) return;
-        a.volume = 1.0;
-        function tryPlay() {
-            if (window.lwLevelSound && window.lwLevelSound.isOn()) return; // Level.1の音源再生中は無音ループを止めておく
-            a.play().catch(function() {});
-        }
-        tryPlay();
-        document.addEventListener('click', tryPlay, { once: true });
-        document.addEventListener('touchstart', tryPlay, { once: true });
-        document.addEventListener('visibilitychange', function() {
-            if (document.visibilityState === 'visible') tryPlay();
-        });
-    })();
-</script>
 <?php if ((int)$level >= 2 && (int)$level <= 4 && !$isLocked): ?>
 <script src="level_video.js?v=2"></script>
 <script>if (window.lwLevelVideo) window.lwLevelVideo.set(<?php echo (int)$level; ?>, <?php echo $activationStartedAt ? 'true' : 'false'; ?>);</script>
