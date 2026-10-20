@@ -8,10 +8,11 @@
 #    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
 #    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=302,L]
 
-    # 英語版：/en/xxx.php を xxx.php へ内部転送（ページ本体は共通。言語判定は i18n.php がURLで行う）
-    RewriteRule ^en$ %{REQUEST_URI}/ [R=301,L]
-    RewriteRule ^en/?$ index.php [L]
-    RewriteRule ^en/(.+)$ $1 [L]
+    # 多言語版：/en/xxx.php・/fr/xxx.php を xxx.php へ内部転送（ページ本体は共通。言語判定は i18n.php がURLで行う）
+    # 言語を増やすときは (en|fr) にコードを足す（i18n.php の $LW_LANGS と i18n_<コード>.php も必要）
+    RewriteRule ^(en|fr)$ %{REQUEST_URI}/ [R=301,L]
+    RewriteRule ^(en|fr)/?$ index.php [L]
+    RewriteRule ^(en|fr)/(.+)$ $2 [L]
 </IfModule>
 
 # データベースファイルへの直接アクセスをブロック
