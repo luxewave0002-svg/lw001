@@ -128,6 +128,8 @@
 - 2026-10-21: 多言語化の仕組みに作り替え＋フランス語 `/fr/` を追加。辞書は言語別ファイル `i18n_en.php` / `i18n_fr.php`（キー=日本語）、エンジンは `i18n.php`。切替は「JP | EN | FR」。
   **言語を増やす手順**: `i18n.php` の `$LW_LANGS` に追加 → `i18n_<コード>.php` を作成 → `.htaccess` の `(en|fr)` にコードを追加。日本語文言を足したら全言語の辞書に訳を足す。実サーバーでの `/fr/` は未確認。
 - 2026-10-21: フランス語辞書の訳語3点を調整（技術発生→Activation de la technologie、独自資料→Documents exclusifs、スマートプラグ契約者の注記）。ネイティブ確認は未実施。
+- 2026-10-27: Apple Watch版ログイン(`apple_watch_login.php`)が「ログインしてもすぐログイン画面に戻る」不具合を修正。原因は `registerNewLoginDevice()` を呼ばず `session_version` が無いため、次のリクエストで `enforceSingleDeviceLogin()` に強制ログアウトされていたこと（ローカルのPHPサーバーで再現・修正確認）。併せて mobile_login.php と同じブルートフォース対策・メール認証確認・永続Cookie発行を追加し、CSRF失敗は `die()` をやめて案内付きリダイレクトに。
+  ※ `apple_watch_register.php` も同型（登録直後のセッションに session_version が無い／メール認証なしで登録される）。未修正。実機未確認。
 
 ## Maintenance
 - 同じ理由で2回説明した内容は、このファイルに1行で追記する

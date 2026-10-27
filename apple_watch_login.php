@@ -8,29 +8,49 @@ if (isset($_SESSION['user_id'])) {
 
 $error = '';
 $login_success = false;
+if (isset($_GET['session_expired'])) {
+    $error = 'Session expired. Please try again.';
+}
 $csrfToken = generateCsrfToken();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['csrf_token'] ?? '';
     if (!verifyCsrfToken($token)) {
-        die('CSRF token validation failed. Invalid request.'); // Simplified error for watch
+        // セッション切れ（Watch/アプリ内ブラウザでCookieが保持されない等）でも強制終了せず、案内付きで戻す
+        header("Location: apple_watch_login.php?session_expired=1");
+        exit;
     }
 
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
 
     if ($email && $password) {
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-        $stmt->execute([$email]);
-        $user = $stmt->fetch();
+        // mobile_login.php と同じ手順（ブルートフォース対策・メール認証確認・単一端末ログインの登録）
+        $loginIdentifier = 'user:' . strtolower($email);
 
-        if ($user && password_verify($password, $user['password'])) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['email'] = $user['email'];
-            writeLog($pdo, $user['id'], 'login', 'User logged in (Apple Watch).');
-            $login_success = true;
+        if (tooManyFailedAttempts($pdo, $loginIdentifier)) {
+            $error = 'Too many attempts. Please try again later.';
         } else {
-            $error = 'Invalid email or password.';
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
+
+            if ($user && password_verify($password, $user['password'])) {
+                if ((int)$user['email_verified'] !== 1) {
+                    $error = 'Please verify your email first.';
+                } else {
+                    clearFailedAttempts($pdo, $loginIdentifier);
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['email'] = $user['email'];
+                    registerNewLoginDevice($pdo, $user['id']); // session_version を持たないと、次のページで強制ログアウトされる
+                    issueRememberCookie($pdo, $user['id']);
+                    writeLog($pdo, $user['id'], 'login', 'User logged in (Apple Watch).');
+                    $login_success = true;
+                }
+            } else {
+                recordFailedAttempt($pdo, $loginIdentifier);
+                $error = 'Invalid email or password.';
+            }
         }
     } else {
         $error = 'Please enter email and password.';
