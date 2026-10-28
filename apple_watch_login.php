@@ -125,6 +125,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 12px;
             margin-bottom: 10px;
         }
+        .remember {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #aaa;
+            margin: 0 0 8px 2px;
+            text-align: left;
+        }
+        .remember input { width: 14px; height: 14px; margin: 0; }
         .link {
             color: #007aff;
             text-decoration: none;
@@ -132,6 +142,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-top: 15px;
             display: block;
         }
+            /* Tailwind未読込のWatchページでも、アプリ内ブラウザ用バナーは通常時は隠す（JSが検知したときだけ表示） */
+        #lw-inapp-banner.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -178,11 +190,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <input type="email" name="email" placeholder="Email" required>
                 <input type="password" name="password" placeholder="Password" required>
+                <label class="remember"><input type="checkbox" id="rememberEmail"> Save Email</label>
+                <label class="remember"><input type="checkbox" id="rememberPassword"> Save Password</label>
                 <button type="submit">Login</button>
             </form>
             <a href="apple_watch_register.php" class="link">Register</a>
             <a href="apple_watch_forgot_password.php" class="link">Forgot Password?</a>
         <?php endif; ?>
     </div>
+<?php if (!$login_success): ?>
+<script>
+    // ログイン情報の保存・自動入力（この端末のブラウザのlocalStorageにのみ保存。サーバーには送信しない。login.php と同じ方式）
+    (function() {
+        var form = document.querySelector('form');
+        var emailInput = document.querySelector('input[name="email"]');
+        var passwordInput = document.querySelector('input[name="password"]');
+        var rememberEmail = document.getElementById('rememberEmail');
+        var rememberPassword = document.getElementById('rememberPassword');
+        if (!form || !emailInput || !passwordInput || !rememberEmail || !rememberPassword) return;
+        try {
+            var savedEmail = localStorage.getItem('lw_saved_email');
+            var savedPassword = localStorage.getItem('lw_saved_password');
+            if (savedEmail !== null) { emailInput.value = savedEmail; rememberEmail.checked = true; }
+            if (savedPassword !== null) { passwordInput.value = savedPassword; rememberPassword.checked = true; }
+        } catch (e) {}
+        form.addEventListener('submit', function() {
+            try {
+                if (rememberEmail.checked) localStorage.setItem('lw_saved_email', emailInput.value);
+                else localStorage.removeItem('lw_saved_email');
+                if (rememberPassword.checked) localStorage.setItem('lw_saved_password', passwordInput.value);
+                else localStorage.removeItem('lw_saved_password');
+            } catch (e) {}
+        });
+    })();
+</script>
+<?php endif; ?>
 </body>
 </html>

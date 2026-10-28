@@ -531,6 +531,37 @@ if (!empty($devices)) {
                 </form>
             </div>
 
+            <?php if ($myInviteCode): ?>
+                <!-- 招待リンク：開くと新規登録ページの招待コード欄が入力済みになる（絶対URLはJSで組み立て、言語パスも引き継ぐ） -->
+                <div class="mt-3 flex flex-wrap items-center gap-2">
+                    <span class="text-xs text-gray-400 tracking-wider">Invite Link</span>
+                    <input type="text" id="invite-link" readonly value="register.php?invite=<?php echo htmlspecialchars(rawurlencode($myInviteCode['code'])); ?>"
+                        class="flex-1 min-w-0 font-mono text-xs text-gray-300 bg-black/40 border border-white/10 rounded px-2 py-1 focus:outline-none">
+                    <button type="button" id="invite-link-copy" class="text-xs bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-1.5 rounded transition-colors text-gray-300 hover:text-white tracking-wider">URLをコピー</button>
+                </div>
+                <script>
+                    (function() {
+                        var input = document.getElementById('invite-link');
+                        var btn = document.getElementById('invite-link-copy');
+                        if (!input || !btn) return;
+                        try { input.value = new URL(input.value, window.location.href).href; } catch (e) {}
+                        btn.addEventListener('click', function() {
+                            var original = btn.textContent;
+                            function done() { btn.textContent = 'コピーしました'; setTimeout(function() { btn.textContent = original; }, 1500); }
+                            function fallback() {
+                                input.focus(); input.select();
+                                try { if (document.execCommand('copy')) done(); } catch (e) {}
+                            }
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(input.value).then(done).catch(fallback);
+                            } else {
+                                fallback();
+                            }
+                        });
+                    })();
+                </script>
+            <?php endif; ?>
+
             <?php if (!empty($myInviteHistory)): ?>
                 <details class="mt-3 border-t border-white/10 pt-3">
                     <summary class="text-xs text-gray-400 tracking-wider cursor-pointer hover:text-gray-200">発行履歴（<?php echo count($myInviteHistory); ?>件）</summary>

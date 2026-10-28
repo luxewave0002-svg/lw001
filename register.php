@@ -5,6 +5,9 @@ $error = '';
 $register_success = false;
 $csrfToken = generateCsrfToken();
 
+// 招待リンク（register.php?invite=コード）から開いた場合は、招待コード欄を入力済みにする（英数字のみ・入力補助のみで検証は従来どおり）
+$prefillInvite = substr(preg_replace('/[^A-Za-z0-9]/', '', (string)($_GET['invite'] ?? '')), 0, 32);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['csrf_token'] ?? '';
     if (!verifyCsrfToken($token)) {
@@ -164,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="email" name="email" placeholder="Email Address" required
                     class="bg-white/5 border border-white/20 rounded px-4 py-2 text-sm text-white focus:outline-none focus:border-white/50">
 
-                <input type="text" name="invite_code" placeholder="Invite Code" required
+                <input type="text" name="invite_code" placeholder="Invite Code" required value="<?php echo htmlspecialchars($prefillInvite); ?>"
                     class="bg-white/5 border border-white/20 rounded px-4 py-2 text-sm text-white focus:outline-none focus:border-white/50">
 
                 <div class="relative w-full">

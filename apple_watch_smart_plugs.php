@@ -175,6 +175,8 @@ $userDevices = $stmt->fetchAll();
         .refresh-button:hover {
             background-color: #555;
         }
+            /* Tailwind未読込のWatchページでも、アプリ内ブラウザ用バナーは通常時は隠す（JSが検知したときだけ表示） */
+        #lw-inapp-banner.hidden { display: none; }
     </style>
 </head>
 <body>

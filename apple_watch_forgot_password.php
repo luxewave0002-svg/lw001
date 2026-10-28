@@ -139,6 +139,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-top: 15px;
             display: block;
         }
+            /* Tailwind未読込のWatchページでも、アプリ内ブラウザ用バナーは通常時は隠す（JSが検知したときだけ表示） */
+        #lw-inapp-banner.hidden { display: none; }
     </style>
 </head>
 <body>

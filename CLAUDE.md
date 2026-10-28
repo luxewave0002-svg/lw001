@@ -130,6 +130,11 @@
 - 2026-10-21: フランス語辞書の訳語3点を調整（技術発生→Activation de la technologie、独自資料→Documents exclusifs、スマートプラグ契約者の注記）。ネイティブ確認は未実施。
 - 2026-10-27: Apple Watch版ログイン(`apple_watch_login.php`)が「ログインしてもすぐログイン画面に戻る」不具合を修正。原因は `registerNewLoginDevice()` を呼ばず `session_version` が無いため、次のリクエストで `enforceSingleDeviceLogin()` に強制ログアウトされていたこと（ローカルのPHPサーバーで再現・修正確認）。併せて mobile_login.php と同じブルートフォース対策・メール認証確認・永続Cookie発行を追加し、CSRF失敗は `die()` をやめて案内付きリダイレクトに。
   ※ `apple_watch_register.php` も同型（登録直後のセッションに session_version が無い／メール認証なしで登録される）。未修正。実機未確認。
+- 2026-10-28: ①ダッシュボードに招待リンク（`register.php?invite=コード`）とコピーボタンを追加。register.phpは?invite=を招待コード欄に入力済みにするだけ（検証は従来どおり）。
+  ②Apple Watch版を技術発生ページ対応に：`w_h.php`（HOME）をLevel一覧（Level.1〜4＋解除済みLimited）に置換、`apple_watch_level.php`を新規（パスワード解除・技術発生ON/OFF・経過時間。裏は`toggle_level.php`を再利用、音は鳴らさない）。
+  `apple_watch_home.php`は`w_h.php`へ転送。Watchのログアウトは`logoutUser()`に統一（従来はsession_destroyのみで永続Cookieで再ログインされ得た）。
+  ③Watchログインに「Save Email/Save Password」（localStorage、login.phpと同じ保存キー）。④Tailwind未読込のWatch各ページで、アプリ内ブラウザ用バナーが常時全面表示されていたのをCSSで隠した。
+  ※Watch実機での表示・動画/音・localStorage保持は未確認。Watchへの自動リダイレクトは未実装。`apple_watch_register.php`の不具合は未修正。
 
 ## Maintenance
 - 同じ理由で2回説明した内容は、このファイルに1行で追記する
